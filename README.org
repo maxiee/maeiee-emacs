@@ -1,0 +1,308 @@
+#+TITLE: Maeiee Emacs：渐进式文学配置起点
+#+AUTHOR: Maeiee
+#+STARTUP: overview
+
+* 这套配置要解决什么
+
+这不是一份“复制完就结束”的豪华配置，而是一套会随着学习一起生长的系统：
+
+1. Org 文件是唯一的人类可维护配置源码；
+2. 每个 Org 文件只讲一个主题或一个插件；
+3. 保存模块时自动 tangle，启动时只加载生成的 Elisp；
+4. 一个极小的 =init.el= 负责找到 Git 仓库；
+5. =bootstrap.sh= 把任意新安装的 Emacs 接到仓库；
+6. 同一批 Org 文件未来可经 =book/book.org= 组织并导出 PDF。
+
+核心原则：*先理解，再加入；能用内置，就暂缓插件；每次只改变一件事。*
+
+* 目录结构
+
+#+begin_example
+maeiee-emacs/
+├── bootstrap.org          # 自举脚本的文学源码
+├── bootstrap.sh           # 空白机器可直接执行，唯一提交的生成文件
+├── bootstrap/
+│   ├── early-init.el      # 极早期、极少量配置
+│   └── init.el            # 只定位仓库并调用 loader
+├── lisp/
+│   └── maeiee-loader.el   # 发现、tangle、加载模块
+├── modules/
+│   ├── 00-package.org
+│   ├── 01-core.org
+│   ├── 10-ui.org
+│   └── ...
+├── generated/             # 自动生成，不进入 Git
+├── scripts/
+│   ├── tangle-all.el
+│   ├── check.el
+│   └── doctor.sh
+└── book/
+    └── book.org           # 汇编为电子书
+#+end_example
+
+文件名前的两位数字就是加载顺序。不要依赖偶然的目录顺序。
+
+* 第一阶段：在 macOS 安装 Emacs
+
+** 安装 Homebrew
+
+若尚未安装 Homebrew，请从 Homebrew 官方站点复制当前安装命令。安装后确认：
+
+#+begin_src shell :tangle no
+brew --version
+#+end_src
+
+** 安装稳定 GUI 版 Emacs
+
+#+begin_src shell :tangle no
+brew install --cask emacs-app
+#+end_src
+
+确认：
+
+#+begin_src shell :tangle no
+/Applications/Emacs.app/Contents/MacOS/Emacs --version
+#+end_src
+
+不建议刚开始就使用 nightly，也不建议为了某个补丁立刻切到复杂的第三方构建。先让学习材料、配置结构和操作习惯稳定下来。
+
+* 第二阶段：创建 Git 仓库
+
+下面以 GitHub 为例，GitLab 或自建 Git 服务完全一样。
+
+#+begin_src shell :tangle no
+mkdir -p ~/Code
+cd ~/Code
+mkdir maeiee-emacs
+cd maeiee-emacs
+git init
+#+end_src
+
+把本 starter 的文件放入目录后：
+
+#+begin_src shell :tangle no
+git add .
+git commit -m "chore: bootstrap literate Emacs configuration"
+git branch -M main
+git remote add origin git@github.com:YOUR_NAME/maeiee-emacs.git
+git push -u origin main
+#+end_src
+
+仓库可以是私有的。不要把密码、Token、公司路径写进模块；机器特有内容放在 =~/.emacs.d/local.el=，该文件不属于仓库。
+
+只有本仓库的 =modules/*.org= 会在缓冲区内跳过 Babel 执行确认；普通 Org 文档继续保留确认提示。不要对来源不明的 Org 文件随意执行源码块。
+
+* 第三阶段：自举新机器
+
+在另一台 Mac 上：
+
+#+begin_src shell :tangle no
+mkdir -p ~/Code
+cd ~/Code
+git clone git@github.com:YOUR_NAME/maeiee-emacs.git
+cd maeiee-emacs
+./bootstrap.sh --install-emacs
+#+end_src
+
+脚本会：
+
+1. 找到或安装 Emacs；
+2. 备份旧 =~/.emacs=、=~/.emacs.el=、=~/.emacs.d/init.el=；
+3. 把 =early-init.el= 和 =init.el= 链接到仓库；
+4. 批量 tangle 所有模块；
+5. 保留软件包、缓存、Custom 数据在 =~/.emacs.d/=，不污染 Git 仓库。
+
+它不会删除旧配置；冲突文件会加时间戳备份。
+
+* 第四阶段：第一次启动
+
+从 Finder 打开 Emacs，或运行：
+
+#+begin_src shell :tangle no
+open -a Emacs
+#+end_src
+
+第一次启动会刷新 package archive，并按模块需要安装 Evil、Vertico、Magit 等软件包。网络失败时先检查 =*Messages*=，再执行：
+
+#+begin_example
+M-x package-refresh-contents
+M-x package-install-selected-packages
+#+end_example
+
+基础诊断：
+
+#+begin_src shell :tangle no
+./scripts/doctor.sh
+make check
+#+end_src
+
+若 =make= 找不到正确 Emacs：
+
+#+begin_src shell :tangle no
+make EMACS=/Applications/Emacs.app/Contents/MacOS/Emacs check
+#+end_src
+
+* 每天怎样维护
+
+** 阅读
+
+从 =00-package.org= 开始，一次只读一个模块。每章包含目标、概念、配置、验证和维护笔记。
+
+** 修改
+
+不要编辑 =generated/*.el=。只改 =modules/*.org= 中的 Emacs Lisp 源码块。
+
+** 保存与应用
+
+保存模块时自动 tangle。要立即在当前会话应用：
+
+#+begin_example
+M-x maeiee-reload-current-module
+#+end_example
+
+也可按 leader：
+
+#+begin_example
+SPC o r
+#+end_example
+
+注意：重载配置不总能撤销旧副作用。改 hook、keymap、mode 时，偶尔重启 Emacs 是最可靠的验证。
+
+** 提交
+
+#+begin_src shell :tangle no
+git status
+git diff
+git add modules/XX-topic.org
+git commit -m "feat: explain and configure topic"
+git push
+#+end_src
+
+一次提交只解决一个学习主题。这样 Git 历史本身也是你的学习轨迹。
+
+* 键位设计
+
+本 starter 使用三层键位：
+
+1. *Evil 编辑层*：=h/j/k/l=、=d/y/p=、text object 等；
+2. *Leader 命令层*：=SPC f= 文件、=SPC b= 缓冲区、=SPC p= 项目；
+3. *macOS 兼容层*：⌘S、⌘O、⌘F、⌘C、⌘V、⌘Z。
+
+同时保留 Emacs 原生键：
+
+- =M-x=：按名字执行命令；
+- =C-h=：帮助系统；
+- =C-g=：中止当前操作；
+- =C-x C-s=：保存；
+- =C-x C-f=：打开文件。
+
+不要试图第一天“统一掉所有 Emacs 键”。原生键是阅读文档和排错时的公共语言。
+
+* 建议的学习路线
+
+** 第 1 周：只学编辑器的自解释能力
+
+- =C-h k=：这个键做什么；
+- =C-h f=：这个函数做什么；
+- =C-h v=：这个变量做什么；
+- =C-h m=：当前 major mode 是什么；
+- =M-x=：按名字探索命令；
+- =M-:=：临时求值一段 Elisp。
+
+目标不是背键，而是学会在 Emacs 内部自己找答案。
+
+** 第 2 周：Org 与文学配置
+
+- 标题折叠、列表、链接；
+- 源码块与 =C-c '=；
+- =C-c C-v t= tangle；
+- =C-c C-e= export；
+- 理解“文档源码”和“机器产物”的边界。
+
+** 第 3 周：Evil 与 Leader
+
+- state、operator、motion、text object；
+- leader 的命名空间；
+- 只给高频动作分配快捷键；
+- 用 which-key 发现，而不是背整张表。
+
+** 第 4 周：minibuffer 与项目
+
+- Vertico 是展示；
+- Orderless 是匹配；
+- Marginalia 是注释；
+- Consult 是一组命令；
+- project.el 是项目协议；
+- Magit 是 Git porcelain。
+
+* 如何继续拆分模块
+
+一插件一文件，例如：
+
+#+begin_example
+modules/44-embark.org
+modules/45-corfu.org
+modules/46-cape.org
+modules/71-dart-mode.org
+modules/72-flutter.org
+modules/81-org-capture.org
+modules/82-org-agenda.org
+modules/83-org-export.org
+#+end_example
+
+判断是否该新建文件：
+
+- 能否用一句话说清它的单一职责？
+- 删除这个文件，会不会只失去一种能力？
+- 是否能独立写出验证步骤？
+- 是否需要独立回滚？
+
+如果答案大多为“是”，就适合独立成章。
+
+* 未来 PDF 电子书
+
+=book/book.org= 通过 =#+INCLUDE= 引用各模块，因此书稿与配置不会复制两份。
+
+安装较完整的 TeX 环境后，可尝试：
+
+#+begin_src shell :tangle no
+make book
+#+end_src
+
+中文 PDF 建议后续单独建立 =modules/83-org-export.org=，配置 XeLaTeX、中文字体、代码高亮和书籍 class。不要在刚开始时让 TeX 环境阻塞 Emacs 学习；先保证 Org 能稳定导出 HTML，再进入 PDF 排版。
+
+* 发生故障时的最短路径
+
+1. 用 =emacs -Q= 判断是不是个人配置导致；
+2. 看 =*Messages*=；
+3. 运行 =M-x toggle-debug-on-error= 后重现；
+4. 运行 =./scripts/doctor.sh=；
+5. 运行 =make check=；
+6. 把最近一个模块暂时改名为不以两位数字开头，验证是否恢复；
+7. 用 Git 回退最近一次小提交。
+
+不要在错误状态下连续安装十个包。先缩小问题边界。
+
+* 下一批推荐章节
+
+- Embark：对当前候选执行动作；
+- Corfu + Cape：buffer 内补全；
+- Dired：文件管理；
+- Eshell/Vterm：终端策略；
+- Org Capture 与 Agenda；
+- Org Roam（等普通 Org 工作流稳定后再引入）；
+- Tree-sitter major mode；
+- Flutter/Dart + Eglot；
+- TRAMP：远程编辑；
+- PDF 导出与出版流水线；
+- ERT：为自定义 Elisp 写测试；
+- CI：在 GitHub Actions 中 batch tangle 与 syntax check。
+
+* 官方参考资料
+
+- GNU Emacs：https://www.gnu.org/software/emacs/
+- Homebrew emacs-app：https://formulae.brew.sh/cask/emacs-app
+- Org Manual：https://orgmode.org/manual/
+- Org 源码提取（tangle）：https://orgmode.org/manual/Extracting-Source-Code.html
+- use-package Manual：https://www.gnu.org/software/emacs/manual/html_mono/use-package.html
+- Evil：https://github.com/emacs-evil/evil

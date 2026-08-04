@@ -1,0 +1,41 @@
+#+TITLE: 后续章节路线图
+
+* 原则
+
+每次只引入一个新能力；先写使用问题，再写配置；每章都应有可执行的验证步骤。
+
+* 第二卷：Emacs 操作系统
+
+** TODO Dired：文件管理
+** TODO Buffer、Window、Frame 的边界
+** TODO Registers、Bookmarks 与 Narrowing
+** TODO TRAMP 远程编辑
+** TODO Eshell 与终端策略
+
+* 第三卷：Org 工作流
+
+** TODO Capture
+** TODO Agenda
+** TODO Refile 与 Archive
+** TODO Clock 与习惯追踪
+** TODO 引用、脚注与文献管理
+** TODO HTML/PDF 发布
+
+* 第四卷：程序开发
+
+** TODO Tree-sitter
+** TODO Eglot 深入
+** TODO Flymake
+** TODO Corfu/Cape
+** TODO Flutter 与 Dart
+** TODO Java/Kotlin
+** TODO Emacs Lisp 与 ERT
+
+* 第五卷：工程化
+
+** TODO 启动性能测量
+** TODO package-lock 与可重复安装
+** TODO CI 中 tangle/check
+** TODO 多机器 local.el
+** TODO 密钥与 auth-source
+** TODO 配置迁移与灾难恢复

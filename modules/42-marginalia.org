@@ -1,0 +1,31 @@
+#+TITLE: 42 Marginalia：给候选项增加上下文
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+在命令、文件、缓冲区等候选旁显示说明、权限、大小、major mode 等元数据。
+
+* 需要理解的概念
+
+- 好的补全不只是“搜到名字”，还应帮助你判断哪个候选才对。
+- annotation 是信息层，不应改变命令本身。
+
+* 配置
+
+#+begin_src emacs-lisp
+(use-package marginalia
+  :demand t
+  :init
+  (marginalia-mode 1))
+#+end_src
+
+* 动手验证
+
+执行 =M-x= 和 =C-x b=，比较启用前后每个候选旁边多出的信息。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =42-marginalia.el= 位于 =generated/=，不要直接编辑。

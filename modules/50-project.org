@@ -1,0 +1,46 @@
+#+TITLE: 50 Project：先用内置 project.el 建立项目观
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+使用 Emacs 内置的 project.el 发现项目、切换项目和在项目内找文件，避免一开始就引入更重的项目框架。
+
+* 需要理解的概念
+
+- project.el 通过后端判断一个目录是否属于项目；Git 仓库是最常见后端。
+- 项目命令的价值在于把“当前目录”升级成一个有边界的工作上下文。
+
+* 配置
+
+#+begin_src emacs-lisp
+(use-package project
+  :ensure nil
+  :custom
+  (project-switch-commands
+   '((project-find-file "Find file" ?f)
+     (project-find-regexp "Find regexp" ?g)
+     (project-dired "Dired" ?d)
+     (project-eshell "Eshell" ?e))))
+
+(with-eval-after-load 'general
+  (maeiee-leader
+    "p" '(:ignore t :which-key "project")
+    "p p" '(project-switch-project :which-key "switch")
+    "p f" '(project-find-file :which-key "find file")
+    "p g" '(project-find-regexp :which-key "grep")
+    "p b" '(project-switch-to-buffer :which-key "buffer")
+    "p d" '(project-dired :which-key "dired")))
+#+end_src
+
+* 动手验证
+
+1. 在本配置仓库内执行 =SPC p f=。
+2. 用 =M-x project-remember-projects-under= 扫描你的代码根目录。
+3. 阅读 =C-h f project-current=，理解“项目”在 Emacs 中是协议而不是固定产品。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =50-project.el= 位于 =generated/=，不要直接编辑。

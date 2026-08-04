@@ -1,0 +1,55 @@
+#+TITLE: 80 Org Mode：笔记、配置与未来电子书的共同底座
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+建立适合文学编程的 Org 默认行为，并提供打开目录、tangle、重载等日常命令。
+
+* 需要理解的概念
+
+- Org 文档是源码；generated Elisp 是构建产物。
+- tangle 面向机器执行，export 面向人类阅读。
+- 一个模块只承担一个主题，文件名前缀同时表达加载顺序。
+
+* 配置
+
+#+begin_src emacs-lisp
+(use-package org
+  :ensure nil
+  :mode ("\\.org\\'" . org-mode)
+  :custom
+  (org-startup-indented t)
+  (org-hide-emphasis-markers t)
+  (org-pretty-entities t)
+  (org-src-fontify-natively t)
+  (org-src-tab-acts-natively t)
+  (org-edit-src-content-indentation 0)
+  (org-cycle-separator-lines 1)
+  :config
+  (require 'ob-emacs-lisp)
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t)
+     (shell . t))))
+
+(with-eval-after-load 'general
+  (maeiee-leader
+    "o" '(:ignore t :which-key "org")
+    "o c" '(org-capture :which-key "capture")
+    "o a" '(org-agenda :which-key "agenda")
+    "o t" '(maeiee-tangle-current-module :which-key "tangle module")
+    "o r" '(maeiee-reload-current-module :which-key "reload module")))
+#+end_src
+
+* 动手验证
+
+1. 在当前模块源码块内按 =C-c '=，进入专用 Emacs Lisp 编辑缓冲区。
+2. 按 =C-c C-v t= 了解原生 tangle；本仓库日常则用 =SPC o t=。
+3. 修改一个无副作用变量，保存后运行 =SPC o r=，验证立即生效。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =80-org.el= 位于 =generated/=，不要直接编辑。

@@ -1,0 +1,48 @@
+#+TITLE: 30 Evil：以 Vim 状态机作为主要编辑语言
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+启用 Evil，并明确使用 Emacs 28 以后内置的 =undo-redo= 体系，不引入额外撤销树。
+
+* 需要理解的概念
+
+- Evil 的 normal、insert、visual、motion 等 state 不是普通 minor mode 那么简单，它们各自有 keymap。
+- 必须在加载 Evil 之前设置若干 =evil-want-*= 变量。
+- macOS 的 Command 快捷键与 Evil 可以并存：前者使用 Super，后者主要占用普通字母键。
+
+* 配置
+
+#+begin_src emacs-lisp
+(use-package evil
+  :demand t
+  :init
+  (setq evil-want-integration t
+        evil-want-keybinding nil
+        evil-want-C-u-scroll t
+        evil-respect-visual-line-mode t
+        evil-undo-system 'undo-redo)
+  :config
+  (evil-mode 1)
+
+  ;; 这些缓冲区更适合一开始处于 Emacs 状态或 normal 状态。
+  (evil-set-initial-state 'messages-buffer-mode 'normal)
+  (evil-set-initial-state 'help-mode 'normal)
+  (evil-set-initial-state 'special-mode 'normal)
+
+  ;; Escape 既退出 Evil insert，也负责中止普通 Emacs 操作。
+  (keymap-global-set "<escape>" #'keyboard-escape-quit))
+#+end_src
+
+* 动手验证
+
+1. 执行 =M-x evil-mode= 开关 Evil，体会它只是 Emacs 上的一层状态机。
+2. 在 normal state 中使用 =u= 撤销、=C-r= 重做。
+3. 执行 =C-h v evil-state=，查看当前状态变量。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =30-evil.el= 位于 =generated/=，不要直接编辑。

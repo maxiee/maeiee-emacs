@@ -1,0 +1,47 @@
+#+TITLE: 43 Consult：把搜索、缓冲区与跳转统一起来
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+用带预览的命令替换部分传统入口，但不破坏 Emacs 的 completion API。
+
+* 需要理解的概念
+
+- Consult 不是一个全新框架，而是一组遵循 Emacs 原生补全协议的高质量命令。
+- 预览很有用，但大型项目中应注意异步搜索工具是否安装。
+
+* 配置
+
+#+begin_src emacs-lisp
+(use-package consult
+  :demand t
+  :bind
+  (("C-s" . consult-line)
+   ("C-x b" . consult-buffer)
+   ("M-y" . consult-yank-pop)
+   ("s-f" . consult-line))
+  :config
+  (setq consult-narrow-key "<"))
+
+(with-eval-after-load 'general
+  (maeiee-leader
+    "s" '(:ignore t :which-key "search")
+    "s s" '(consult-line :which-key "line")
+    "s r" '(consult-ripgrep :which-key "ripgrep")
+    "s i" '(consult-imenu :which-key "imenu")
+
+    "b b" '(consult-buffer :which-key "switch")))
+#+end_src
+
+* 动手验证
+
+1. 在较长文件中按 ⌘F 或 =C-s=，输入片段并观察即时预览。
+2. 安装 =ripgrep= 后，在 Git 项目中运行 =SPC s r=。
+3. 输入 =<=，观察 Consult 的 narrowing 提示。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =43-consult.el= 位于 =generated/=，不要直接编辑。

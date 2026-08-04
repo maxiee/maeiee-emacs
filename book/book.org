@@ -1,0 +1,29 @@
+#+TITLE: Maeiee Emacs：从自举配置到文学编程
+#+AUTHOR: Maeiee
+#+LANGUAGE: zh-CN
+#+OPTIONS: toc:2 num:t
+#+LATEX_COMPILER: xelatex
+#+LATEX_CLASS: book
+
+#+INCLUDE: "../README.org" :minlevel 1
+
+* 配置模块
+
+下面这些章节直接引用配置模块。未来每个模块既是可执行配置，也是书稿章节。
+
+#+INCLUDE: "../modules/00-package.org" :minlevel 2
+#+INCLUDE: "../modules/01-core.org" :minlevel 2
+#+INCLUDE: "../modules/10-ui.org" :minlevel 2
+#+INCLUDE: "../modules/20-macos.org" :minlevel 2
+#+INCLUDE: "../modules/30-evil.org" :minlevel 2
+#+INCLUDE: "../modules/31-evil-collection.org" :minlevel 2
+#+INCLUDE: "../modules/32-general.org" :minlevel 2
+#+INCLUDE: "../modules/40-vertico.org" :minlevel 2
+#+INCLUDE: "../modules/41-orderless.org" :minlevel 2
+#+INCLUDE: "../modules/42-marginalia.org" :minlevel 2
+#+INCLUDE: "../modules/43-consult.org" :minlevel 2
+#+INCLUDE: "../modules/50-project.org" :minlevel 2
+#+INCLUDE: "../modules/60-magit.org" :minlevel 2
+#+INCLUDE: "../modules/70-eglot.org" :minlevel 2
+#+INCLUDE: "../modules/80-org.org" :minlevel 2
+#+INCLUDE: "../modules/90-writing.org" :minlevel 2

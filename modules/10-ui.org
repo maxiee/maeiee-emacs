@@ -1,0 +1,68 @@
+#+TITLE: 10 界面：克制、清晰、适合长时间阅读
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+先只使用 Emacs 内置能力建立稳定界面，不急着堆主题包、图标包与复杂 mode line。
+
+* 需要理解的概念
+
+- face 决定文本如何显示；fontset 决定不同字符集使用什么字体。
+- hook 让配置只在合适的 major mode 中启用。
+- 图形帧与终端帧能力不同，配置应先判断 =display-graphic-p=。
+
+* 配置
+
+#+begin_src emacs-lisp
+(load-theme 'modus-operandi-tinted t)
+
+(setq-default cursor-type 'bar)
+(blink-cursor-mode -1)
+(column-number-mode 1)
+(global-hl-line-mode 1)
+
+(add-hook 'prog-mode-hook #'display-line-numbers-mode)
+(add-hook 'text-mode-hook #'visual-line-mode)
+
+(when (fboundp 'pixel-scroll-precision-mode)
+  (pixel-scroll-precision-mode 1))
+
+(setq frame-title-format
+      '(:eval
+        (format "%s — Emacs"
+                (or (buffer-file-name)
+                    (buffer-name)))))
+
+(add-to-list 'default-frame-alist '(width . 118))
+(add-to-list 'default-frame-alist '(height . 42))
+
+(defun maeiee-apply-fonts (&optional frame)
+  "Apply conservative macOS fonts to FRAME."
+  (with-selected-frame (or frame (selected-frame))
+    (when (display-graphic-p)
+      (when (find-font (font-spec :family "Menlo"))
+        (set-face-attribute 'default nil
+                            :family "Menlo"
+                            :height 150))
+      (when (find-font (font-spec :family "PingFang SC"))
+        (dolist (charset '(han cjk-misc bopomofo))
+          (set-fontset-font t charset
+                            (font-spec :family "PingFang SC")
+                            nil 'prepend))))))
+
+(add-hook 'after-init-hook #'maeiee-apply-fonts)
+(add-hook 'after-make-frame-functions #'maeiee-apply-fonts)
+#+end_src
+
+* 动手验证
+
+1. 用 =M-x load-theme= 临时试用内置主题，再决定是否替换。
+2. 在代码文件中确认有行号，在 Org 文件中确认没有行号。
+3. 若中文和英文基线不协调，只修改 =maeiee-apply-fonts=，不要到处散落字体设置。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =10-ui.el= 位于 =generated/=，不要直接编辑。

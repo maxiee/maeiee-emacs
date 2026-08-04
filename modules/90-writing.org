@@ -1,0 +1,56 @@
+#+TITLE: 90 写作：面向长文与中文内容
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+增加长文写作时的视觉换行、拼写接口与专注模式入口；不强绑某一种个人知识管理方法。
+
+* 需要理解的概念
+
+- visual line 只改变显示换行，不修改文件内容。
+- fill-column 与自动硬换行适合代码注释，不一定适合中文长文。
+- 写作体验应与导出排版分离。
+
+* 配置
+
+#+begin_src emacs-lisp
+(defun maeiee-writing-mode ()
+  "Toggle a simple distraction-reduced writing layout."
+  (interactive)
+  (if (bound-and-true-p olivetti-mode)
+      (olivetti-mode -1)
+    (olivetti-mode 1)))
+
+(use-package olivetti
+  :commands (olivetti-mode)
+  :custom
+  (olivetti-body-width 88))
+
+(add-hook 'org-mode-hook #'visual-line-mode)
+(add-hook 'markdown-mode-hook #'visual-line-mode)
+
+(use-package markdown-mode
+  :mode ("README\\.md\\'" . gfm-mode)
+  :custom
+  (markdown-command "pandoc"))
+
+(with-eval-after-load 'general
+  (maeiee-leader
+    "t" '(:ignore t :which-key "toggle")
+    "t w" '(maeiee-writing-mode :which-key "writing")
+    "t l" '(display-line-numbers-mode :which-key "line numbers")
+    "t v" '(visual-line-mode :which-key "visual lines")))
+#+end_src
+
+* 动手验证
+
+1. 打开一篇长 Org 文档，按 =SPC t w=。
+2. 比较 =visual-line-mode= 与 =auto-fill-mode= 的区别。
+3. 暂时不要追求“完美写作界面”；先记录一周真实摩擦，再决定加什么。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =90-writing.el= 位于 =generated/=，不要直接编辑。
