@@ -18,6 +18,12 @@
   (expand-file-name "generated/" maeiee-emacs-root)
   "Directory containing generated Emacs Lisp files.")
 
+(defun maeiee--load-machine-local-file (name)
+  "Load machine-local file NAME from `user-emacs-directory' when readable."
+  (let ((file (expand-file-name name user-emacs-directory)))
+    (when (file-readable-p file)
+      (load file nil 'nomessage))))
+
 (defun maeiee--module-files ()
   "Return module Org files in lexical order.
 
@@ -105,8 +111,13 @@ A two-digit numeric prefix is therefore the module load order."
               nil t)))
 
 (defun maeiee-load-configuration ()
-  "Load all modules and then an optional machine-local file."
+  "Load machine-local startup settings, modules, then local overrides.
+
+The optional early-local.el is loaded before any module so settings needed by
+startup network requests are available to 00-package.org.  The optional
+local.el remains a final override layer."
   (make-directory maeiee-generated-directory t)
+  (maeiee--load-machine-local-file "early-local.el")
   (dolist (org-file (maeiee--module-files))
     (condition-case err
         (maeiee-load-module org-file)
@@ -114,9 +125,7 @@ A two-digit numeric prefix is therefore the module load order."
        (error "Maeiee Emacs failed while loading %s: %s"
               (file-name-nondirectory org-file)
               (error-message-string err)))))
-  (let ((local-file (expand-file-name "local.el" user-emacs-directory)))
-    (when (file-readable-p local-file)
-      (load local-file nil 'nomessage)))
+  (maeiee--load-machine-local-file "local.el")
   (message "Maeiee Emacs loaded %d modules."
            (length (maeiee--module-files))))
 

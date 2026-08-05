@@ -23,6 +23,7 @@ maeiee-emacs/
 ├── bootstrap.sh           # 空白机器可直接执行，唯一提交的生成文件
 ├── bootstrap/
 │   ├── early-init.el      # 极早期、极少量配置
+│   ├── early-local.example.el # 机器本地的启动前配置示例
 │   └── init.el            # 只定位仓库并调用 loader
 ├── lisp/
 │   └── maeiee-loader.el   # 发现、tangle、加载模块
@@ -88,7 +89,7 @@ git remote add origin git@github.com:YOUR_NAME/maeiee-emacs.git
 git push -u origin main
 #+end_src
 
-仓库可以是私有的。不要把密码、Token、公司路径写进模块；机器特有内容放在 =~/.emacs.d/local.el=，该文件不属于仓库。
+仓库可以是私有的。不要把密码、Token、公司路径写进模块。需要在模块加载前生效的机器特有内容放在 =~/.emacs.d/early-local.el=，普通机器特有覆盖放在 =~/.emacs.d/local.el=；这两个文件都不属于仓库。
 
 只有本仓库的 =modules/*.org= 会在缓冲区内跳过 Babel 执行确认；普通 Org 文档继续保留确认提示。不要对来源不明的 Org 文件随意执行源码块。
 
@@ -128,6 +129,24 @@ open -a Emacs
 M-x package-refresh-contents
 M-x package-install-selected-packages
 #+end_example
+
+** 为不同机器配置本地代理
+
+如果本地 HTTP 代理在不同机器上使用不同端口，不要把端口提交进公共模块。复制仓库提供的早期本地配置示例：
+
+#+begin_src shell :tangle no
+cp bootstrap/early-local.example.el ~/.emacs.d/early-local.el
+#+end_src
+
+然后只修改本机文件中的端口：
+
+#+begin_src emacs-lisp :tangle no
+(setq maeiee-proxy-port 7890)
+#+end_src
+
+例如另一台机器可以改为 =7897=。=early-local.el= 会在 =00-package.org= 之前加载，因此 =package-refresh-contents= 与 =use-package= 安装依赖时都会使用代理；随后加载的 =local.el= 仍可用于普通的机器级覆盖。
+
+如果 Emacs 已经停在 =Contacting host=，先退出 Emacs、创建上述文件并确认代理程序正在运行，然后重新启动。首次索引刷新成功后会写入 =~/.emacs.d/var/package-archives-ready=，以后不会在每次启动时重复刷新。
 
 基础诊断：
 
