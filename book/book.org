@@ -18,6 +18,7 @@
 #+INCLUDE: "../modules/30-evil.org" :minlevel 2
 #+INCLUDE: "../modules/31-evil-collection.org" :minlevel 2
 #+INCLUDE: "../modules/32-general.org" :minlevel 2
+#+INCLUDE: "../modules/33-menu.org" :minlevel 2
 #+INCLUDE: "../modules/40-vertico.org" :minlevel 2
 #+INCLUDE: "../modules/41-orderless.org" :minlevel 2
 #+INCLUDE: "../modules/42-marginalia.org" :minlevel 2

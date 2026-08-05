@@ -179,10 +179,10 @@ make EMACS=/Applications/Emacs.app/Contents/MacOS/Emacs check
 M-x maeiee-reload-current-module
 #+end_example
 
-也可按 leader：
+也可进入新增的配置管理二级菜单，再点击“重载当前模块”：
 
 #+begin_example
-SPC o r
+SPC m
 #+end_example
 
 注意：重载配置不总能撤销旧副作用。改 hook、keymap、mode 时，偶尔重启 Emacs 是最可靠的验证。
@@ -204,7 +204,7 @@ git push
 本 starter 使用三层键位：
 
 1. *Evil 编辑层*：=h/j/k/l=、=d/y/p=、text object 等；
-2. *Leader 命令层*：=SPC f= 文件、=SPC b= 缓冲区、=SPC p= 项目；
+2. *Leader 命令层*：=SPC f= 文件、=SPC b= 缓冲区、=SPC p= 项目；=SPC m= 进入可点击的 Maeiee 配置管理二级菜单；
 3. *macOS 兼容层*：⌘S、⌘O、⌘F、⌘C、⌘V、⌘Z。
 
 同时保留 Emacs 原生键：
