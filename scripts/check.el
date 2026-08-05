@@ -9,6 +9,12 @@
 (add-to-list 'load-path (expand-file-name "lisp" maeiee-emacs-root))
 (require 'maeiee-loader)
 
+(dolist (command '(maeiee-tangle-module
+                   maeiee-tangle-current-module
+                   maeiee-reload-current-module))
+  (unless (commandp command)
+    (error "%S must be an interactive command" command)))
+
 (maeiee-tangle-all)
 
 (let ((failed nil))

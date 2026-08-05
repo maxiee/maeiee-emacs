@@ -44,16 +44,21 @@ A two-digit numeric prefix is therefore the module load order."
   (or (not (file-exists-p el-file))
       (file-newer-than-file-p org-file el-file)))
 
+(defun maeiee--current-module-file ()
+  "Return the current buffer's Maeiee Org module path.
+
+Signal a user error unless the current buffer visits a file in
+`maeiee-modules-directory'."
+  (or (and buffer-file-name
+           (file-in-directory-p
+            (file-truename buffer-file-name)
+            (file-truename maeiee-modules-directory))
+           buffer-file-name)
+      (user-error "Current buffer is not a Maeiee Emacs module")))
+
 (defun maeiee-tangle-module (org-file)
   "Tangle the Emacs Lisp blocks in ORG-FILE and return the output path."
-  (interactive
-   (list
-    (or (and buffer-file-name
-             (file-in-directory-p
-              (file-truename buffer-file-name)
-              (file-truename maeiee-modules-directory))
-             buffer-file-name)
-        (user-error "Current buffer is not a Maeiee Emacs module"))))
+  (interactive (list (maeiee--current-module-file)))
   (require 'org)
   (require 'ob-tangle)
   (make-directory maeiee-generated-directory t)
@@ -61,6 +66,13 @@ A two-digit numeric prefix is therefore the module load order."
         (org-confirm-babel-evaluate nil))
     (org-babel-tangle-file org-file target "\\`emacs-lisp\\'")
     target))
+
+(defun maeiee-tangle-current-module ()
+  "Tangle the Maeiee Org module visited by the current buffer."
+  (interactive)
+  (let* ((org-file (maeiee--current-module-file))
+         (target (maeiee-tangle-module org-file)))
+    (message "Tangled %s" (file-name-nondirectory target))))
 
 (defun maeiee-load-module (org-file)
   "Tangle ORG-FILE when necessary, then load its generated Elisp."
@@ -80,12 +92,7 @@ A two-digit numeric prefix is therefore the module load order."
 (defun maeiee-reload-current-module ()
   "Tangle and reload the module visited by the current buffer."
   (interactive)
-  (unless (and buffer-file-name
-               (file-in-directory-p
-                (file-truename buffer-file-name)
-                (file-truename maeiee-modules-directory)))
-    (user-error "Current buffer is not a Maeiee Emacs module"))
-  (let ((target (maeiee-tangle-module buffer-file-name)))
+  (let ((target (maeiee-tangle-module (maeiee--current-module-file))))
     (load target nil 'nomessage)
     (message "Reloaded %s" (file-name-nondirectory buffer-file-name))))
 
