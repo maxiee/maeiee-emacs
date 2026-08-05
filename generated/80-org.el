@@ -1,7 +1,6 @@
-;; [[file:../modules/80-org.org::*配置][配置:1]]
-;; 声明并配置 Org Mode。
+;; [[file:../modules/80-org.org::*Org 文档的阅读与编辑体验][Org 文档的阅读与编辑体验:1]]
+;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
 (use-package org
-  ;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
   :ensure nil
   ;; 打开 .org 文件时自动启用 org-mode。
   :mode ("\\.org\\'" . org-mode)
@@ -20,9 +19,12 @@
   ;; 编辑源码块时不额外添加缩进，保持源码原本的列位置。
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
-  (org-cycle-separator-lines 1)
-  ;; 在 Org 配置加载完成后执行初始化代码。
-  :config
+  (org-cycle-separator-lines 1))
+;; Org 文档的阅读与编辑体验:1 ends here
+
+;; [[file:../modules/80-org.org::*Org Babel：让文档成为可执行源码][Org Babel：让文档成为可执行源码:1]]
+;; Org 加载后，再启用对应的 Babel 语言。
+(with-eval-after-load 'org
   ;; 确保 Emacs Lisp 代码块的 Babel 支持已加载。
   (require 'ob-emacs-lisp)
   ;; 注册 Org Babel 支持的语言。
@@ -32,7 +34,9 @@
    ;; 启用 Emacs Lisp 和 Shell 代码块。
    '((emacs-lisp . t)
      (shell . t))))
+;; Org Babel：让文档成为可执行源码:1 ends here
 
+;; [[file:../modules/80-org.org::*用快捷键连接 Org 的日常工作流][用快捷键连接 Org 的日常工作流:1]]
 ;; 等 general 包加载后，再注册 Org 相关的 leader 快捷键。
 (with-eval-after-load 'general
   ;; 在 maeiee 的 leader 键下创建 Org 快捷键分组。
@@ -47,4 +51,4 @@
     "o t" '(maeiee-tangle-current-module :which-key "tangle module")
     ;; 使用 "o r" 重载当前配置模块。
     "o r" '(maeiee-reload-current-module :which-key "reload module")))
-;; 配置:1 ends here
+;; 用快捷键连接 Org 的日常工作流:1 ends here

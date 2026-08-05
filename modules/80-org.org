@@ -14,10 +14,14 @@
 
 * 配置
 
+** Org 文档的阅读与编辑体验
+
+先把 Org 当作一种日常编辑环境来配置：打开文档时自动进入
+Org Mode，阅读时保留清晰的层级与排版，编辑源码块时则尽量尊重原始代码的缩进。
+
 #+begin_src emacs-lisp
-;; 声明并配置 Org Mode。
+;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
 (use-package org
-  ;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
   :ensure nil
   ;; 打开 .org 文件时自动启用 org-mode。
   :mode ("\\.org\\'" . org-mode)
@@ -36,9 +40,18 @@
   ;; 编辑源码块时不额外添加缩进，保持源码原本的列位置。
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
-  (org-cycle-separator-lines 1)
-  ;; 在 Org 配置加载完成后执行初始化代码。
-  :config
+  (org-cycle-separator-lines 1))
+#+end_src
+
+** Org Babel：让文档成为可执行源码
+
+文学编程的关键不只是把代码放进 Org，而是让同一份文档同时服务于
+阅读、编辑和构建。这里启用 Emacs Lisp 与 Shell 两种 Babel 语言，并把
+初始化代码独立出来，便于按概念阅读和修改。
+
+#+begin_src emacs-lisp
+;; Org 加载后，再启用对应的 Babel 语言。
+(with-eval-after-load 'org
   ;; 确保 Emacs Lisp 代码块的 Babel 支持已加载。
   (require 'ob-emacs-lisp)
   ;; 注册 Org Babel 支持的语言。
@@ -48,7 +61,15 @@
    ;; 启用 Emacs Lisp 和 Shell 代码块。
    '((emacs-lisp . t)
      (shell . t))))
+#+end_src
 
+** 用快捷键连接 Org 的日常工作流
+
+Org 的配置还需要和仓库自身的工作流接上：Capture 与 Agenda 面向内容，
+tangle 与 reload 面向配置。把它们放在同一个快捷键主题下，读者可以直接
+看出“写内容”和“维护配置”如何共享 Org 入口。
+
+#+begin_src emacs-lisp
 ;; 等 general 包加载后，再注册 Org 相关的 leader 快捷键。
 (with-eval-after-load 'general
   ;; 在 maeiee 的 leader 键下创建 Org 快捷键分组。
