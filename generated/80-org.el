@@ -22,6 +22,25 @@
   (org-cycle-separator-lines 1))
 ;; Org 文档的阅读与编辑体验:1 ends here
 
+;; [[file:../modules/80-org.org::*Evil Org Mode：让 Org 使用 Evil 风格][Evil Org Mode：让 Org 使用 Evil 风格:1]]
+(use-package evil-org
+  :ensure t
+  :after (org evil)
+  ;; 只在 Org 缓冲区启用 Evil Org 键位。
+  :hook (org-mode . evil-org-mode)
+  :config
+  ;; 保留导航、插入、回车、文本对象和 Org 的附加操作。
+  (evil-org-set-key-theme
+   '(navigation insert return textobjects additional))
+  ;; C-j/C-k 专门跳转标题，gj/gk 继续使用 evil-org 的 element 导航。
+  (evil-define-key '(normal visual motion) 'evil-org-mode
+    (kbd "C-j") #'org-next-visible-heading
+    (kbd "C-k") #'org-previous-visible-heading)
+  ;; 为 Org Agenda 设置对应的 Evil 键位。
+  (require 'evil-org-agenda)
+  (evil-org-agenda-set-keys))
+;; Evil Org Mode：让 Org 使用 Evil 风格:1 ends here
+
 ;; [[file:../modules/80-org.org::*Org Babel：让文档成为可执行源码][Org Babel：让文档成为可执行源码:1]]
 ;; Org 加载后，再启用对应的 Babel 语言。
 (with-eval-after-load 'org

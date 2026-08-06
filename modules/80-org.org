@@ -4,13 +4,15 @@
 
 * 本章目标
 
-建立适合文学编程的 Org 默认行为，并提供打开目录、tangle、重载等日常命令。
+建立适合文学编程的 Org 默认行为，为 Org 增加可与原生键位并用的 Evil
+结构导航，并提供打开目录、tangle、重载等日常命令。
 
 * Org 基础语法与导航
 
 Org 最重要的特点是：普通文本通过少量标记获得结构。先掌握标题、折叠、
 列表、链接和表格，就能阅读和维护大多数 Org 文档。下面的内容按日常使用
-频率排列，适合作为快速回顾。
+频率排列，适合作为快速回顾；每项操作同时说明原生 Emacs 键位和本配置中
+可用的 Evil 键位。
 
 ** 标题与层级
 
@@ -31,21 +33,27 @@ Org 最重要的特点是：普通文本通过少量标记获得结构。先掌�
 
 常用操作：
 
-- =C-c C-n=：下一个标题；=C-c C-p=：上一个标题。
+- 下一个 / 上一个标题：原生 Org 使用 =C-c C-n= / =C-c C-p=；Evil normal
+  state 使用 =C-j= / =C-k=。
 - =C-c C-f=：下一个同级标题；=C-c C-b=：上一个同级标题。
 - =C-c C-u=：跳到父级标题。
 - =M-RET=：在当前层级插入新标题。
 - =M-S-RET=：在当前层级插入 TODO 标题。
-- =M-LEFT/RIGHT=：升高或降低标题层级。
-- =M-UP/DOWN=：移动当前标题及其内容。
+- 提升 / 降低标题层级：原生 Org 使用 =M-LEFT/RIGHT=；Evil normal state
+  使用 =M-h/l= 或 =<= / =>=。
+- 向上 / 向下移动当前标题及其内容：原生 Org 使用 =M-UP/DOWN=；Evil
+  normal state 使用 =M-k/j=。
+
+本配置把 =C-j/C-k= 专门留给标题导航，同时保留 =gj/gk= 的 Org element
+导航。两组按键职责不同，适合在长文档中交替使用。
 
 ** 折叠与展开
 
 Org 默认以大纲方式显示文档。标题仍然存在，只是正文或子树暂时被隐藏。
 
-- =TAB=：折叠或展开当前标题。
+- =TAB=：折叠或展开当前标题；Evil normal state 中也可使用 =TAB= 或 =g TAB=。
 - =S-TAB=：循环切换整篇文档的显示层级。
-- =C-c C-n/p/f/b/u=：在折叠状态下也可以导航标题。
+- =C-c C-n/p/f/b/u= 与 Evil 的 =C-j/C-k=：在折叠状态下也可以导航标题。
 
 建议：阅读长文档时保持折叠，编辑局部内容时只展开当前子树；不要为了查找
 内容而手动滚动整篇文档。
@@ -92,6 +100,9 @@ Org 默认以大纲方式显示文档。标题仍然存在，只是正文或子�
 - =C-c C-c=：切换复选框状态。
 - =S-LEFT/RIGHT=：切换复选框或 TODO 状态。
 
+启用 =evil-org= 后，normal state 中 =o= / =O= 会在当前列表项下方或上方插入
+同级项目，并自动进入 insert state。
+
 列表适合表达步骤和清单；如果项目需要日期、状态或 Agenda 管理，通常应
 升级为标题和 TODO 项。
 
@@ -134,6 +145,8 @@ Org 默认以大纲方式显示文档。标题仍然存在，只是正文或子�
 - =S-TAB=：移动到上一个单元格。
 - =M-LEFT/RIGHT=：移动列；=M-UP/DOWN=：移动行。
 - =C-c C-c=：在表格中重新对齐当前表格；有公式时也会触发相应更新。
+
+启用 =evil-org= 后，normal state 中也可用 =M-h/l= 移动列、=M-k/j= 移动行。
 
 表格既可以作为普通笔记，也可以作为简单的数据表。复杂计算和程序化数据
 处理再交给 Babel。
@@ -183,6 +196,17 @@ Org 默认以大纲方式显示文档。标题仍然存在，只是正文或子�
 - =C-c C-c=：在链接、标签、复选框等上下文中执行对应操作。
 - =C-x n s=：收窄到当前子树；=C-x n w=：恢复完整视图。
 
+启用 =evil-org= 后，本配置把 Evil normal state 的结构导航分成两层：
+
+- =C-j= / =C-k=：下一个 / 上一个标题。
+- =gj= / =gk=：下一个 / 上一个 Org element，保留 =evil-org= 的默认行为。
+- =gh= / =gl=：移动到父级 / 子级 Org element。
+- =gH=：跳到最近的顶层标题。
+
+这里的 element 可以是段落、列表项、表格行或源码块，不一定只指标题；需要
+精确地按标题导航时，使用 =C-j/C-k= 或原生的 =C-c C-n/p=。同级标题和父级
+标题仍可分别使用 =C-c C-f/b= 与 =C-c C-u=。
+
 当文档变长时，优先使用标题、搜索、稀疏树和收窄，而不是依靠滚动查找。
 
 * 需要理解的概念
@@ -220,6 +244,39 @@ Org Mode，阅读时保留清晰的层级与排版，编辑源码块时则尽量
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
   (org-cycle-separator-lines 1))
+#+end_src
+
+** Evil Org Mode：让 Org 使用 Evil 风格
+
+=evil-collection= 主要负责 Agenda、Dired 和 Help 等特殊界面的 Evil 集成；
+Org 文档本身的结构导航由 =evil-org= 提供。启用后，=evil-org-mode= 只在 Org
+缓冲区增加 normal、visual 和 insert 状态下的 Org 专用操作，不会覆盖原生的
+=C-c= 前缀命令，因此 Emacs 风格与 Evil 风格可以并存。
+
+本仓库已经在 =00-package.org= 中配置了 MELPA，下面的 =use-package= 会在需要
+时安装 =evil-org=。=evil-org-agenda= 则为 Agenda 缓冲区补充相应的 Evil 键位。
+
+考虑到 =[= / =]= 不适合作为高频键位，本配置把更顺手的 =C-j/C-k= 注册为标题
+motion，并同时用于 normal、visual 和 motion state；=gj/gk= 则保持
+=evil-org= 默认的 element 导航。
+
+#+begin_src emacs-lisp
+(use-package evil-org
+  :ensure t
+  :after (org evil)
+  ;; 只在 Org 缓冲区启用 Evil Org 键位。
+  :hook (org-mode . evil-org-mode)
+  :config
+  ;; 保留导航、插入、回车、文本对象和 Org 的附加操作。
+  (evil-org-set-key-theme
+   '(navigation insert return textobjects additional))
+  ;; C-j/C-k 专门跳转标题，gj/gk 继续使用 evil-org 的 element 导航。
+  (evil-define-key '(normal visual motion) 'evil-org-mode
+    (kbd "C-j") #'org-next-visible-heading
+    (kbd "C-k") #'org-previous-visible-heading)
+  ;; 为 Org Agenda 设置对应的 Evil 键位。
+  (require 'evil-org-agenda)
+  (evil-org-agenda-set-keys))
 #+end_src
 
 ** Org Babel：让文档成为可执行源码
@@ -267,9 +324,11 @@ tangle 与 reload 面向配置。把它们放在同一个快捷键主题下，�
 
 * 动手验证
 
-1. 在当前模块源码块内按 =C-c '=，进入专用 Emacs Lisp 编辑缓冲区。
-2. 按 =C-c C-v t= 了解原生 tangle；本仓库日常则用 =SPC o t=。
-3. 修改一个无副作用变量，保存后按 =SPC m=，点击“重载当前模块”，验证立即生效。
+1. 在包含多个标题、段落和列表项的 Org 文档中进入 normal state，使用
+   =C-j/C-k= 验证光标只在标题间移动，再用 =gj/gk= 验证 element 导航。
+2. 在当前模块源码块内按 =C-c '=，进入专用 Emacs Lisp 编辑缓冲区。
+3. 按 =C-c C-v t= 了解原生 tangle；本仓库日常则用 =SPC o t=。
+4. 修改一个无副作用变量，保存后按 =SPC m=，点击“重载当前模块”，验证立即生效。
 
 * 维护笔记
 
