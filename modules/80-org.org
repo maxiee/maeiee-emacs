@@ -222,8 +222,41 @@ Org 默认以大纲方式显示文档。标题仍然存在，只是正文或子�
 先把 Org 当作一种日常编辑环境来配置：打开文档时自动进入
 Org Mode，阅读时保留清晰的层级与排版，编辑源码块时则尽量尊重原始代码的缩进。
 
+Org 默认只把 ASCII 空白和标点作为行内强调标记的边界，因此
+中文，=代码=。这类写法不会触发 =org-hide-emphasis-markers=。下面把常见的
+中文全角标点加入强调标记的前后边界；标点集合单独做成变量，日后可以通过
+Customize 或直接修改该变量来扩展。
+
 #+begin_src emacs-lisp
 ;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
+(defun maeiee-org--configure-cjk-emphasis-boundaries ()
+  "Allow CJK punctuation around Org emphasis markers."
+  (let ((components (copy-sequence org-emphasis-regexp-components)))
+    ;; Remove our own punctuation before adding it so reloading stays idempotent.
+    (dolist (index '(0 1))
+      (setf (nth index components)
+            (let ((component (nth index components)))
+              (dolist (char (string-to-list maeiee-org-cjk-emphasis-punctuation))
+                (setq component
+                      (replace-regexp-in-string
+                       (regexp-quote (char-to-string char)) ""
+                       component t t)))
+              (concat component maeiee-org-cjk-emphasis-punctuation))))
+    ;; Org computes `org-emph-re' and `org-verbatim-re' from this variable.
+    (org-set-emph-re 'org-emphasis-regexp-components components)))
+
+(defcustom maeiee-org-cjk-emphasis-punctuation
+  "，。！？；：、（）【】「」『』《》〈〉“”‘’〔〕［］｛｝…——"
+  "CJK punctuation allowed next to Org emphasis markers."
+  :type 'string
+  :group 'org-appearance
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         ;; The setter may run before Org has been loaded.
+         (when (and (boundp 'org-emphasis-regexp-components)
+                    (fboundp 'org-set-emph-re))
+           (maeiee-org--configure-cjk-emphasis-boundaries))))
+
 (use-package org
   :ensure nil
   ;; 打开 .org 文件时自动启用 org-mode。
@@ -243,7 +276,10 @@ Org Mode，阅读时保留清晰的层级与排版，编辑源码块时则尽量
   ;; 编辑源码块时不额外添加缩进，保持源码原本的列位置。
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
-  (org-cycle-separator-lines 1))
+  (org-cycle-separator-lines 1)
+  :config
+  ;; 重新生成强调正则，使中文标点也能包围 =...=、~...~ 等行内标记。
+  (maeiee-org--configure-cjk-emphasis-boundaries))
 #+end_src
 
 ** Evil Org Mode：让 Org 使用 Evil 风格

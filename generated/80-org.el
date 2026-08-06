@@ -1,5 +1,33 @@
 ;; [[file:../modules/80-org.org::*Org 文档的阅读与编辑体验][Org 文档的阅读与编辑体验:1]]
 ;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
+(defun maeiee-org--configure-cjk-emphasis-boundaries ()
+  "Allow CJK punctuation around Org emphasis markers."
+  (let ((components (copy-sequence org-emphasis-regexp-components)))
+    ;; Remove our own punctuation before adding it so reloading stays idempotent.
+    (dolist (index '(0 1))
+      (setf (nth index components)
+            (let ((component (nth index components)))
+              (dolist (char (string-to-list maeiee-org-cjk-emphasis-punctuation))
+                (setq component
+                      (replace-regexp-in-string
+                       (regexp-quote (char-to-string char)) ""
+                       component t t)))
+              (concat component maeiee-org-cjk-emphasis-punctuation))))
+    ;; Org computes `org-emph-re' and `org-verbatim-re' from this variable.
+    (org-set-emph-re 'org-emphasis-regexp-components components)))
+
+(defcustom maeiee-org-cjk-emphasis-punctuation
+  "，。！？；：、（）【】「」『』《》〈〉“”‘’〔〕［］｛｝…——"
+  "CJK punctuation allowed next to Org emphasis markers."
+  :type 'string
+  :group 'org-appearance
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         ;; The setter may run before Org has been loaded.
+         (when (and (boundp 'org-emphasis-regexp-components)
+                    (fboundp 'org-set-emph-re))
+           (maeiee-org--configure-cjk-emphasis-boundaries))))
+
 (use-package org
   :ensure nil
   ;; 打开 .org 文件时自动启用 org-mode。
@@ -19,7 +47,10 @@
   ;; 编辑源码块时不额外添加缩进，保持源码原本的列位置。
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
-  (org-cycle-separator-lines 1))
+  (org-cycle-separator-lines 1)
+  :config
+  ;; 重新生成强调正则，使中文标点也能包围 =...=、~...~ 等行内标记。
+  (maeiee-org--configure-cjk-emphasis-boundaries))
 ;; Org 文档的阅读与编辑体验:1 ends here
 
 ;; [[file:../modules/80-org.org::*Evil Org Mode：让 Org 使用 Evil 风格][Evil Org Mode：让 Org 使用 Evil 风格:1]]
