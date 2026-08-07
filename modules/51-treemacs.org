@@ -1,0 +1,84 @@
+#+TITLE: 51 Treemacs：在左侧浏览项目文件树
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+使用 Treemacs 在 Emacs 左侧提供可按需打开和关闭的项目文件树，并把入口放入现有的 =SPC p= 项目二级菜单。
+
+* 需要理解的概念
+
+- Treemacs 使用独立的侧边窗口展示项目目录，不会取代普通编辑窗口。
+- 命令 =treemacs= 负责显示和隐藏已有侧边栏；Maeiee 的包装命令还会在首次打开时自动加入当前项目。
+- Treemacs 原生支持内置的 =project.el=；当前配置不需要再引入另一套项目管理框架。
+- =treemacs-evil= 负责让文件树中的状态、光标和 =j/k= 导航与 Evil 协同工作。
+
+* 文件树与左侧窗口
+
+只声明日常需要调整的选项，其余行为沿用 Treemacs 默认值。
+
+#+begin_src emacs-lisp
+(use-package treemacs
+  :commands (treemacs)
+  :custom
+  ;; 把项目文件树固定显示在左侧。
+  (treemacs-position 'left)
+  ;; 使用适合常见项目名称的初始宽度。
+  (treemacs-width 32)
+  ;; 第一次打开时定位并展开当前文件所在项目。
+  (treemacs-follow-after-init t)
+  (treemacs-expand-after-init t)
+  :config
+  ;; 编辑器切换文件时，让文件树同步选中当前文件。
+  (treemacs-follow-mode 1)
+  ;; 监听磁盘变化，及时刷新新建、删除或改名的文件。
+  (treemacs-filewatch-mode 1))
+#+end_src
+
+* 项目感知的 toggle
+
+直接第一次调用 =treemacs= 时，空工作区会询问项目根目录。这里复用 Treemacs 的公开项目命令，让 =SPC p t= 首次使用时自动采用当前 =project.el= 项目；侧边栏已显示时仍调用原生 toggle 将其关闭。
+
+#+begin_src emacs-lisp
+(defun maeiee-treemacs-toggle ()
+  "Toggle the Treemacs sidebar, adding the current project when needed."
+  (interactive)
+  ;; 按键首次触发时才加载 Treemacs，避免增加无关启动工作。
+  (require 'treemacs)
+  ;; 已经显示时关闭；否则加入当前项目并显示文件树。
+  (if (eq (treemacs-current-visibility) 'visible)
+      (treemacs)
+    (treemacs-add-and-display-current-project)))
+#+end_src
+
+* Evil 导航
+
+#+begin_src emacs-lisp
+(use-package treemacs-evil
+  :after (treemacs evil))
+#+end_src
+
+* Leader 菜单入口
+
+保持 =SPC= 的一级菜单不变，把 toggle 加入已有的 project 二级菜单。
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'general
+  (maeiee-leader
+    "p t" '(maeiee-treemacs-toggle :which-key "toggle file tree")))
+#+end_src
+
+* 动手验证
+
+1. 打开 Git 项目中的任意文件，回到 Evil normal state。
+2. 按 =SPC p t=，确认左侧出现当前项目文件树。
+3. 在文件树中用 =j/k= 移动、用 =RET= 打开文件，确认编辑窗口正常保留。
+4. 再按 =SPC p t=，确认文件树关闭。
+5. 新建或删除一个临时文件，确认展开的目录会自动刷新。
+
+* 维护笔记
+
+- 文件树不设置额外的全局快捷键，只通过 =SPC p t= 暴露。
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =51-treemacs.el= 位于 =generated/=，不要直接编辑。

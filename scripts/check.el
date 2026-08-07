@@ -24,6 +24,54 @@
            (or (maeiee--tree-contains-p (car tree) target)
                (maeiee--tree-contains-p (cdr tree) target)))))
 
+(defun maeiee--generated-contains-p (basename target)
+  "Return non-nil when generated file BASENAME contains TARGET."
+  (let ((file (expand-file-name basename maeiee-generated-directory))
+        (found nil))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (condition-case nil
+          (while t
+            (when (maeiee--tree-contains-p
+                   (read (current-buffer))
+                   target)
+              (setq found t)))
+        (end-of-file nil)))
+    found))
+
+(defun maeiee--generated-defines-p (basename function)
+  "Return non-nil when generated file BASENAME defines FUNCTION."
+  (let ((file (expand-file-name basename maeiee-generated-directory))
+        (found nil))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (condition-case nil
+          (while t
+            (let ((form (read (current-buffer))))
+              (when (and (eq (car-safe form) 'defun)
+                         (eq (cadr form) function))
+                (setq found t))))
+        (end-of-file nil)))
+    found))
+
+(let ((leader-binding
+       '("p t"
+         (quote
+          (maeiee-treemacs-toggle :which-key "toggle file tree")))))
+  (unless (and
+           (maeiee--generated-contains-p
+            "51-treemacs.el"
+            '(treemacs-position (quote left)))
+           (maeiee--generated-defines-p
+            "51-treemacs.el"
+            'maeiee-treemacs-toggle)
+           (maeiee--generated-contains-p
+            "51-treemacs.el"
+            leader-binding))
+    (error "51-treemacs.el must configure a left sidebar at SPC p t")))
+
 (let ((org-config
        (expand-file-name "80-org.el" maeiee-generated-directory))
       (cjk-wrap-setting '(word-wrap-by-category t))
