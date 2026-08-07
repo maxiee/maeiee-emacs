@@ -278,13 +278,13 @@ Evil 映射。
 
 ** Org 文档的阅读与编辑体验
 
-先把 Org 当作一种日常编辑环境来配置：打开文档时自动进入
-Org Mode，阅读时保留清晰的层级与排版，编辑源码块时则尽量尊重原始代码的缩进。
+先把 Org 当作一种日常编辑环境来配置：打开文档时自动进入 Org Mode，阅读时保留清晰的层级与排版，编辑源码块时则尽量尊重原始代码的缩进。
 
-Org 默认只把 ASCII 空白和标点作为行内强调标记的边界，因此
-中文，=代码=。这类写法不会触发 =org-hide-emphasis-markers=。下面把常见的
-中文全角标点加入强调标记的前后边界；标点集合单独做成变量，日后可以通过
-Customize 或直接修改该变量来扩展。
+Org 默认只把 ASCII 空白和标点作为行内强调标记的边界，因此中文，=代码=。这类写法不会触发 =org-hide-emphasis-markers=。下面把常见的
+中文全角标点加入强调标记的前后边界；标点集合单独做成变量，日后可以通过 Customize 或直接修改该变量来扩展。
+
+视觉软换行默认优先在空白处断行，这会把没有空格的连续中文误当成一个长词。
+这里允许 Emacs 按字符类别在汉字之间断行；通过 Customize 设置该选项还会加载 =kinsoku=，避免逗号、句号等中文标点出现在视觉行首。
 
 #+begin_src emacs-lisp
 ;; Org 是 Emacs 内置功能，不需要通过包管理器安装。
@@ -324,6 +324,8 @@ Customize 或直接修改该变量来扩展。
   :custom
   ;; 启用标题和内容的缩进显示，让层级结构更清晰。
   (org-startup-indented t)
+  ;; 允许视觉软换行在中文字符之间选择断点，并遵循中文标点禁则。
+  (word-wrap-by-category t)
   ;; 隐藏粗体、斜体等强调标记，只显示排版后的文字。
   (org-hide-emphasis-markers t)
   ;; 将 Org 实体（例如特殊字符）渲染成更易读的形式。
@@ -344,16 +346,11 @@ Customize 或直接修改该变量来扩展。
 ** Evil Org Mode：让 Org 使用 Evil 风格
 
 =evil-collection= 主要负责 Agenda、Dired 和 Help 等特殊界面的 Evil 集成；
-Org 文档本身的结构导航由 =evil-org= 提供。启用后，=evil-org-mode= 只在 Org
-缓冲区增加 normal、visual 和 insert 状态下的 Org 专用操作，不会覆盖原生的
-=C-c= 前缀命令，因此 Emacs 风格与 Evil 风格可以并存。
+Org 文档本身的结构导航由 =evil-org= 提供。启用后，=evil-org-mode= 只在 Org 缓冲区增加 normal、visual 和 insert 状态下的 Org 专用操作，不会覆盖原生的 =C-c= 前缀命令，因此 Emacs 风格与 Evil 风格可以并存。
 
-本仓库已经在 =00-package.org= 中配置了 MELPA，下面的 =use-package= 会在需要
-时安装 =evil-org=。=evil-org-agenda= 则为 Agenda 缓冲区补充相应的 Evil 键位。
+本仓库已经在 =00-package.org= 中配置了 MELPA，下面的 =use-package= 会在需要时安装 =evil-org=。=evil-org-agenda= 则为 Agenda 缓冲区补充相应的 Evil 键位。
 
-考虑到 =[= / =]= 不适合作为高频键位，本配置把更顺手的 =C-j/C-k= 注册为标题
-motion，并同时用于 normal、visual 和 motion state；=gj/gk= 则保持
-=evil-org= 默认的 element 导航。
+考虑到 =[= / =]= 不适合作为高频键位，本配置把更顺手的 =C-j/C-k= 注册为标题 motion，并同时用于 normal、visual 和 motion state；=gj/gk= 则保持 =evil-org= 默认的 element 导航。
 
 #+begin_src emacs-lisp
 (use-package evil-org
@@ -376,9 +373,7 @@ motion，并同时用于 normal、visual 和 motion state；=gj/gk= 则保持
 
 ** Org Babel：让文档成为可执行源码
 
-文学编程的关键不只是把代码放进 Org，而是让同一份文档同时服务于
-阅读、编辑和构建。这里启用 Emacs Lisp 与 Shell 两种 Babel 语言，并把
-初始化代码独立出来，便于按概念阅读和修改。
+文学编程的关键不只是把代码放进 Org，而是让同一份文档同时服务于阅读、编辑和构建。这里启用 Emacs Lisp 与 Shell 两种 Babel 语言，并把初始化代码独立出来，便于按概念阅读和修改。
 
 #+begin_src emacs-lisp
 ;; Org 加载后，再启用对应的 Babel 语言。
@@ -396,9 +391,7 @@ motion，并同时用于 normal、visual 和 motion state；=gj/gk= 则保持
 
 ** 用快捷键连接 Org 的日常工作流
 
-Org 的配置还需要和仓库自身的工作流接上：Capture 与 Agenda 面向内容，
-tangle 与 reload 面向配置。把它们放在同一个快捷键主题下，读者可以直接
-看出“写内容”和“维护配置”如何共享 Org 入口。
+Org 的配置还需要和仓库自身的工作流接上：Capture 与 Agenda 面向内容，tangle 与 reload 面向配置。把它们放在同一个快捷键主题下，读者可以直接看出“写内容”和“维护配置”如何共享 Org 入口。
 
 #+begin_src emacs-lisp
 ;; 等 general 包加载后，再注册 Org 相关的 leader 快捷键。

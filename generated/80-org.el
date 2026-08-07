@@ -36,6 +36,8 @@
   :custom
   ;; 启用标题和内容的缩进显示，让层级结构更清晰。
   (org-startup-indented t)
+  ;; 允许视觉软换行在中文字符之间选择断点，并遵循中文标点禁则。
+  (word-wrap-by-category t)
   ;; 隐藏粗体、斜体等强调标记，只显示排版后的文字。
   (org-hide-emphasis-markers t)
   ;; 将 Org 实体（例如特殊字符）渲染成更易读的形式。

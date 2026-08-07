@@ -17,6 +17,40 @@
 
 (maeiee-tangle-all)
 
+(defun maeiee--tree-contains-p (tree target)
+  "Return non-nil when TREE contains a subtree equal to TARGET."
+  (or (equal tree target)
+      (and (consp tree)
+           (or (maeiee--tree-contains-p (car tree) target)
+               (maeiee--tree-contains-p (cdr tree) target)))))
+
+(let ((org-config
+       (expand-file-name "80-org.el" maeiee-generated-directory))
+      (cjk-wrap-setting '(word-wrap-by-category t))
+      (found nil))
+  (with-temp-buffer
+    (insert-file-contents org-config)
+    (goto-char (point-min))
+    (condition-case nil
+        (while t
+          (when (maeiee--tree-contains-p
+                 (read (current-buffer))
+                 cjk-wrap-setting)
+            (setq found t)))
+      (end-of-file nil)))
+  (unless found
+    (error "%s must enable %S"
+           (file-name-nondirectory org-config)
+           cjk-wrap-setting)))
+
+(customize-set-variable 'word-wrap-by-category t)
+(unless (and (default-value 'word-wrap-by-category)
+             (featurep 'kinsoku)
+             (aref (char-category-set ?中) ?|)
+             (aref (char-category-set ?，) ?>)
+             (aref (char-category-set ?《) ?<))
+  (error "CJK visual wrapping and kinsoku categories must be active"))
+
 (let ((failed nil))
   (dolist (file (directory-files maeiee-generated-directory t "\\.el\\'"))
     (condition-case err
