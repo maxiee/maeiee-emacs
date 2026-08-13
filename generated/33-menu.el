@@ -52,6 +52,8 @@
   "modules/50-project.org")
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-51-treemacs
   "modules/51-treemacs.org")
+(maeiee-config-menu-define-file-opener maeiee-config-menu-open-52-outline
+  "modules/52-outline.org")
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-60-magit
   "modules/60-magit.org")
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-70-eglot
@@ -122,7 +124,8 @@
     ("42" "42 Marginalia"     maeiee-config-menu-open-42-marginalia)
     ("43" "43 Consult"        maeiee-config-menu-open-43-consult)
     ("50" "50 Project"        maeiee-config-menu-open-50-project)
-    ("51" "51 Treemacs"       maeiee-config-menu-open-51-treemacs)]
+    ("51" "51 Treemacs"       maeiee-config-menu-open-51-treemacs)
+    ("52" "52 Outline"        maeiee-config-menu-open-52-outline)]
    ["工具和写作"
     ("60" "60 Magit"          maeiee-config-menu-open-60-magit)
     ("70" "70 Eglot"          maeiee-config-menu-open-70-eglot)

@@ -24,6 +24,20 @@
            (or (maeiee--tree-contains-p (car tree) target)
                (maeiee--tree-contains-p (cdr tree) target)))))
 
+(defun maeiee--list-prefix-p (prefix list)
+  "Return non-nil when PREFIX is equal to the first items in LIST."
+  (or (null prefix)
+      (and (consp list)
+           (equal (car prefix) (car list))
+           (maeiee--list-prefix-p (cdr prefix) (cdr list)))))
+
+(defun maeiee--tree-contains-sequence-p (tree sequence)
+  "Return non-nil when TREE contains adjacent items equal to SEQUENCE."
+  (and (consp tree)
+       (or (maeiee--list-prefix-p sequence tree)
+           (maeiee--tree-contains-sequence-p (car tree) sequence)
+           (maeiee--tree-contains-sequence-p (cdr tree) sequence))))
+
 (defun maeiee--generated-contains-p (basename target)
   "Return non-nil when generated file BASENAME contains TARGET."
   (let ((file (expand-file-name basename maeiee-generated-directory))
@@ -40,6 +54,22 @@
         (end-of-file nil)))
     found))
 
+(defun maeiee--generated-contains-sequence-p (basename sequence)
+  "Return non-nil when BASENAME contains adjacent forms in SEQUENCE."
+  (let ((file (expand-file-name basename maeiee-generated-directory))
+        (found nil))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (condition-case nil
+          (while t
+            (when (maeiee--tree-contains-sequence-p
+                   (read (current-buffer))
+                   sequence)
+              (setq found t)))
+        (end-of-file nil)))
+    found))
+
 (defun maeiee--generated-defines-p (basename function)
   "Return non-nil when generated file BASENAME defines FUNCTION."
   (let ((file (expand-file-name basename maeiee-generated-directory))
@@ -52,6 +82,23 @@
             (let ((form (read (current-buffer))))
               (when (and (eq (car-safe form) 'defun)
                          (eq (cadr form) function))
+                (setq found t))))
+        (end-of-file nil)))
+    found))
+
+(defun maeiee--generated-defines-command-p (basename function)
+  "Return non-nil when BASENAME defines interactive FUNCTION."
+  (let ((file (expand-file-name basename maeiee-generated-directory))
+        (found nil))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (condition-case nil
+          (while t
+            (let ((form (read (current-buffer))))
+              (when (and (eq (car-safe form) 'defun)
+                         (eq (cadr form) function)
+                         (maeiee--tree-contains-p form '(interactive)))
                 (setq found t))))
         (end-of-file nil)))
     found))
@@ -90,6 +137,57 @@
     (error "%s must enable %S"
            (file-name-nondirectory org-config)
            cjk-wrap-setting)))
+
+(let* ((outline-binding
+        '("w o"
+          (quote
+           (maeiee-outline-toggle :which-key "outline sidebar"))))
+       (checks
+        `((interactive-command
+           . ,(maeiee--generated-defines-command-p
+               "52-outline.el"
+               'maeiee-outline-toggle))
+          (right-side
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(imenu-list-position (quote right))))
+          (width
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(imenu-list-size 32)))
+          (clear-unsupported-buffer
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(imenu-list-persist-when-imenu-index-unavailable nil)))
+          (automatic-update
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(imenu-list-auto-update t)))
+          (leader-binding
+           . ,(maeiee--generated-contains-sequence-p
+               "52-outline.el"
+               outline-binding)))))
+  (dolist (check checks)
+    (unless (cdr check)
+      (error "52-outline.el generic Outline check failed: %s" (car check)))))
+
+(unless (maeiee--generated-contains-p
+         "80-org.el"
+         '(org-imenu-depth 8))
+  (error "80-org.el must expose deep Org headings through Imenu"))
+
+(require 'imenu)
+(with-temp-buffer
+  (org-mode)
+  (setq-local org-imenu-depth 8)
+  (insert "* L1\n** L2\n******** L8\n********* L9\n")
+  (let ((index (imenu--make-index-alist t)))
+    (unless (and (maeiee--tree-contains-p index "L1")
+                 (maeiee--tree-contains-p index "L2")
+                 (maeiee--tree-contains-p index "L8")
+                 (not (maeiee--tree-contains-p index "L9")))
+      (error "Org Imenu depth adapter produced an unexpected index: %S"
+             index))))
 
 (customize-set-variable 'word-wrap-by-category t)
 (unless (and (default-value 'word-wrap-by-category)

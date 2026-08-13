@@ -50,6 +50,8 @@
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
   (org-cycle-separator-lines 1)
+  ;; 向通用 Imenu Outline 暴露最多八级 Org 标题。
+  (org-imenu-depth 8)
   :config
   ;; 重新生成强调正则，使中文标点也能包围 =...=、~...~ 等行内标记。
   (maeiee-org--configure-cjk-emphasis-boundaries))

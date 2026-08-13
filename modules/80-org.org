@@ -338,6 +338,8 @@ Org 默认只把 ASCII 空白和标点作为行内强调标记的边界，因此
   (org-edit-src-content-indentation 0)
   ;; 设置标题循环时，标题之间保留一行分隔空白。
   (org-cycle-separator-lines 1)
+  ;; 向通用 Imenu Outline 暴露最多八级 Org 标题。
+  (org-imenu-depth 8)
   :config
   ;; 重新生成强调正则，使中文标点也能包围 =...=、~...~ 等行内标记。
   (maeiee-org--configure-cjk-emphasis-boundaries))
@@ -414,9 +416,10 @@ Org 的配置还需要和仓库自身的工作流接上：Capture 与 Agenda 面
 
 1. 在包含多个标题、段落和列表项的 Org 文档中进入 normal state，使用
    =C-j/C-k= 验证光标只在标题间移动，再用 =gj/gk= 验证 element 导航。
-2. 在当前模块源码块内按 =C-c '=，进入专用 Emacs Lisp 编辑缓冲区。
-3. 按 =C-c C-v t= 了解原生 tangle；本仓库日常则用 =SPC o t=。
-4. 修改一个无副作用变量，保存后按 =SPC m=，点击“重载当前模块”，验证立即生效。
+2. 按 =SPC w o= 打开通用 Outline，确认其中包含当前 Org 文档的多级标题。
+3. 在当前模块源码块内按 =C-c '=，进入专用 Emacs Lisp 编辑缓冲区。
+4. 按 =C-c C-v t= 了解原生 tangle；本仓库日常则用 =SPC o t=。
+5. 修改一个无副作用变量，保存后按 =SPC m=，点击“重载当前模块”，验证立即生效。
 
 * 维护笔记
 

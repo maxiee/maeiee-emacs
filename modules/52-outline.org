@@ -1,0 +1,109 @@
+#+TITLE: 52 Outline：用通用侧边栏浏览当前缓冲区结构
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+在 Emacs 右侧提供一个与 major mode 解耦的 Outline 侧边栏。侧边栏只负责窗口、
+刷新与导航；Org、编程语言或 Eglot 则通过 Emacs 的 Imenu 接口提供各自的大纲。
+
+* 需要理解的概念
+
+- Imenu 是缓冲区结构的统一接口：不同 major mode 可以返回标题、函数、类型或
+  其他具名位置。
+- =imenu-list= 是 Imenu 的可视化消费者，它不需要知道当前缓冲区是 Org 还是
+  某种编程语言。
+- 本章建立通用框架；=80-org.org= 只调整 Org 暴露给 Imenu 的标题深度。
+- 未来适配 C 等语言时，应扩展对应 major mode 或 Eglot 的 Imenu 数据，而不是
+  再实现一个侧边窗口。
+
+* 通用 Outline 命令
+
+对外只暴露 Maeiee 自己的 toggle 命令。这样即使未来替换侧边栏实现，Leader
+入口和其他模块也不必跟着改变。
+
+#+begin_src emacs-lisp
+(defun maeiee-outline-toggle ()
+  "Toggle the generic Outline sidebar for the current buffer."
+  (interactive)
+  ;; 首次使用时才加载通用 Imenu 侧边栏。
+  (require 'imenu-list)
+  ;; 根据右侧 Outline 当前是否可见，统一执行打开或关闭。
+  (imenu-list-smart-toggle))
+
+(defun maeiee-outline--protect-window ()
+  "Keep the Outline sidebar when deleting other windows."
+  ;; 更新完成后取得 Outline 所在窗口。
+  (let ((window (get-buffer-window imenu-list-buffer-name)))
+    ;; 只在窗口确实可见时设置侧边栏窗口参数。
+    (when window
+      ;; 普通的 delete-other-windows 不应顺带关闭结构导航。
+      (set-window-parameter window 'no-delete-other-windows t))))
+#+end_src
+
+* 右侧窗口与自动刷新
+
+保持一个 =*Ilist*= 缓冲区作为通用 Outline。它会在空闲时重新读取当前缓冲区
+的 Imenu 索引，并同步高亮当前位置；不支持 Imenu 的缓冲区会清空列表，避免把
+上一份文件的大纲误认为当前内容。
+
+#+begin_src emacs-lisp
+(use-package imenu-list
+  :ensure t
+  ;; toggle 首次执行时再加载软件包。
+  :commands (imenu-list-smart-toggle)
+  :custom
+  ;; 与左侧 Treemacs 文件树分居两侧。
+  (imenu-list-position 'right)
+  ;; 使用足以阅读常见标题和函数名的固定宽度。
+  (imenu-list-size 32)
+  ;; 保持固定宽度，避免长标题持续挤压正文窗口。
+  (imenu-list-auto-resize nil)
+  ;; 打开后进入 Outline，便于立即使用键盘导航。
+  (imenu-list-focus-after-activation t)
+  ;; 当前模式没有 Imenu 数据时清空列表，不遗留上一缓冲区的大纲。
+  (imenu-list-persist-when-imenu-index-unavailable nil)
+  ;; 空闲时自动重建索引，让新增或移动的结构及时出现。
+  (imenu-list-auto-update t)
+  ;; 在 Outline 中同步高亮正文光标所在的当前条目。
+  (imenu-list-update-current-entry t)
+  :config
+  ;; 每次刷新后恢复 Maeiee 对侧边窗口生命周期的约定。
+  (add-hook 'imenu-list-update-hook #'maeiee-outline--protect-window)
+  ;; 为 Evil normal/motion state 补充与其他列表一致的导航键。
+  (evil-define-key '(normal motion) imenu-list-major-mode-map
+    (kbd "j") #'next-line
+    (kbd "k") #'previous-line
+    (kbd "RET") #'imenu-list-ret-dwim
+    (kbd "l") #'imenu-list-display-dwim
+    (kbd "TAB") #'hs-toggle-hiding
+    (kbd "g") #'imenu-list-refresh
+    (kbd "q") #'imenu-list-quit-window))
+#+end_src
+
+* Leader 菜单入口
+
+Outline 是当前缓冲区的结构窗口，而不是 Org 专属动作，因此把它加入既有的
+=SPC w= window 二级菜单，不增加新的一级入口。
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'general
+  ;; 在现有 window 分组中注册通用 Outline toggle。
+  (maeiee-leader
+    "w o" '(maeiee-outline-toggle :which-key "outline sidebar")))
+#+end_src
+
+* 动手验证
+
+1. 打开包含多级标题的 Org 文档，按 =SPC w o=，确认右侧按层级显示标题。
+2. 在 Outline 中用 =j/k= 移动，按 =RET= 跳到正文，按 =l= 预览但保留焦点。
+3. 在正文新增或移动一个标题，短暂停顿，确认右侧列表自动更新。
+4. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
+5. 切到不提供 Imenu 索引的缓冲区，确认侧边栏不会保留上一文件的大纲。
+
+* 维护笔记
+
+- 新语言的结构适配应落在该语言的 Imenu/Eglot 配置中，本模块只维护通用 UI。
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =52-outline.el= 位于 =generated/=，不要直接编辑。

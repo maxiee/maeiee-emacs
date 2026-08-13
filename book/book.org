@@ -25,6 +25,7 @@
 #+INCLUDE: "../modules/43-consult.org" :minlevel 2
 #+INCLUDE: "../modules/50-project.org" :minlevel 2
 #+INCLUDE: "../modules/51-treemacs.org" :minlevel 2
+#+INCLUDE: "../modules/52-outline.org" :minlevel 2
 #+INCLUDE: "../modules/60-magit.org" :minlevel 2
 #+INCLUDE: "../modules/70-eglot.org" :minlevel 2
 #+INCLUDE: "../modules/80-org.org" :minlevel 2
