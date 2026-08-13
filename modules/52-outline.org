@@ -39,6 +39,20 @@
     (when window
       ;; 普通的 delete-other-windows 不应顺带关闭结构导航。
       (set-window-parameter window 'no-delete-other-windows t))))
+
+(defun maeiee-outline--update-from-source (update &rest arguments)
+  "Run UPDATE in the displayed source when refresh starts in Outline."
+  ;; 自动定时器会在当前获得焦点的缓冲区中执行；Outline 自身不是数据源。
+  (if (derived-mode-p 'imenu-list-major-mode)
+      ;; 根据上一次展示的源码是否仍然存在选择刷新或清理。
+      (if (buffer-live-p imenu-list--displayed-buffer)
+          ;; 回到源码缓冲区重建 Imenu 索引，避免用 *Ilist* 的空索引覆盖目录。
+          (with-current-buffer imenu-list--displayed-buffer
+            (apply update arguments))
+        ;; 源码已关闭时清空失效目录，不继续显示无法跳转的旧条目。
+        (imenu-list-clear))
+    ;; 从普通源码缓冲区触发时保持 imenu-list 原来的更新行为。
+    (apply update arguments)))
 #+end_src
 
 * 右侧窗口与自动刷新
@@ -46,6 +60,11 @@
 保持一个 =*Ilist*= 缓冲区作为通用 Outline。它会在空闲时重新读取当前缓冲区
 的 Imenu 索引，并同步高亮当前位置；不支持 Imenu 的缓冲区会清空列表，避免把
 上一份文件的大纲误认为当前内容。
+
+=imenu-list= 的空闲定时器默认在当前获得焦点的缓冲区中执行。如果打开后焦点
+位于 =*Ilist*=，直接刷新会把侧边栏自身误当成源码，并用空索引清除刚生成的
+目录。下面的 around advice 只修正这个上下文：从 Outline 触发时回到其记录的
+源码缓冲区，从其他普通缓冲区触发时仍沿用原有逻辑。
 
 #+begin_src emacs-lisp
 (use-package imenu-list
@@ -68,6 +87,12 @@
   ;; 在 Outline 中同步高亮正文光标所在的当前条目。
   (imenu-list-update-current-entry t)
   :config
+  ;; 重载模块时不重复安装同一个 advice。
+  (unless (advice-member-p #'maeiee-outline--update-from-source
+                           'imenu-list-update)
+    ;; 保证自动刷新始终从真正的源码缓冲区读取 Imenu 索引。
+    (advice-add 'imenu-list-update
+                :around #'maeiee-outline--update-from-source))
   ;; 每次刷新后恢复 Maeiee 对侧边窗口生命周期的约定。
   (add-hook 'imenu-list-update-hook #'maeiee-outline--protect-window)
   ;; 为 Evil normal/motion state 补充与其他列表一致的导航键。
@@ -98,8 +123,9 @@ Outline 是当前缓冲区的结构窗口，而不是 Org 专属动作，因此�
 1. 打开包含多级标题的 Org 文档，按 =SPC w o=，确认右侧按层级显示标题。
 2. 在 Outline 中用 =j/k= 移动，按 =RET= 跳到正文，按 =l= 预览但保留焦点。
 3. 在正文新增或移动一个标题，短暂停顿，确认右侧列表自动更新。
-4. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
-5. 切到不提供 Imenu 索引的缓冲区，确认侧边栏不会保留上一文件的大纲。
+4. 保持焦点位于 Outline 并等待一次自动刷新，确认目录不会一闪而过后清空。
+5. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
+6. 切到不提供 Imenu 索引的普通缓冲区，确认侧边栏不会保留上一文件的大纲。
 
 * 维护笔记
 

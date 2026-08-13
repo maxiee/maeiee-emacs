@@ -86,6 +86,22 @@
         (end-of-file nil)))
     found))
 
+(defun maeiee--generated-definition-form (basename function)
+  "Return the defun form for FUNCTION found in BASENAME, or nil."
+  (let ((file (expand-file-name basename maeiee-generated-directory))
+        (found nil))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (condition-case nil
+          (while t
+            (let ((form (read (current-buffer))))
+              (when (and (eq (car-safe form) 'defun)
+                         (eq (cadr form) function))
+                (setq found form))))
+        (end-of-file nil)))
+    found))
+
 (defun maeiee--generated-defines-command-p (basename function)
   "Return non-nil when BASENAME defines interactive FUNCTION."
   (let ((file (expand-file-name basename maeiee-generated-directory))
@@ -163,6 +179,13 @@
            . ,(maeiee--generated-contains-p
                "52-outline.el"
                '(imenu-list-auto-update t)))
+          (source-aware-update
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(advice-add
+                 (quote imenu-list-update)
+                 :around
+                 (function maeiee-outline--update-from-source))))
           (leader-binding
            . ,(maeiee--generated-contains-sequence-p
                "52-outline.el"
@@ -170,6 +193,42 @@
   (dolist (check checks)
     (unless (cdr check)
       (error "52-outline.el generic Outline check failed: %s" (car check)))))
+
+(let ((update-definition
+       (maeiee--generated-definition-form
+        "52-outline.el"
+        'maeiee-outline--update-from-source)))
+  (unless update-definition
+    (error "52-outline.el must define source-aware Outline refresh"))
+  (eval update-definition))
+
+(defvar imenu-list--displayed-buffer nil)
+(unless (fboundp 'imenu-list-major-mode)
+  (define-derived-mode imenu-list-major-mode special-mode "Test-Ilist"))
+
+(let ((source-buffer (generate-new-buffer " *outline-source-test*"))
+      (outline-buffer (generate-new-buffer " *outline-sidebar-test*"))
+      updated-buffer)
+  (unwind-protect
+      (progn
+        (with-current-buffer outline-buffer
+          (imenu-list-major-mode))
+        (let ((imenu-list--displayed-buffer source-buffer))
+          (with-current-buffer outline-buffer
+            (maeiee-outline--update-from-source
+             (lambda (&rest _arguments)
+               (setq updated-buffer (current-buffer))))))
+        (unless (eq updated-buffer source-buffer)
+          (error "Outline refresh must use its displayed source buffer"))
+        (setq updated-buffer nil)
+        (with-current-buffer source-buffer
+          (maeiee-outline--update-from-source
+           (lambda (&rest _arguments)
+             (setq updated-buffer (current-buffer)))))
+        (unless (eq updated-buffer source-buffer)
+          (error "Source-buffer refresh must preserve its current buffer")))
+    (kill-buffer source-buffer)
+    (kill-buffer outline-buffer)))
 
 (unless (maeiee--generated-contains-p
          "80-org.el"
