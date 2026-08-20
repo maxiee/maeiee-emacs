@@ -62,6 +62,8 @@
   "modules/80-org.org")
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-90-writing
   "modules/90-writing.org")
+(maeiee-config-menu-define-file-opener maeiee-config-menu-open-99-life-system
+  "modules/99-life-system.org")
 
 (defun maeiee-config-menu-find-file ()
   "Choose and open a human-maintained Org file from this repository."
@@ -130,7 +132,8 @@
     ("60" "60 Magit"          maeiee-config-menu-open-60-magit)
     ("70" "70 Eglot"          maeiee-config-menu-open-70-eglot)
     ("80" "80 Org"            maeiee-config-menu-open-80-org)
-    ("90" "90 Writing"        maeiee-config-menu-open-90-writing)]
+    ("90" "90 Writing"        maeiee-config-menu-open-90-writing)
+    ("99" "99 人生系统"       maeiee-config-menu-open-99-life-system)]
    ["管理"
     ("f" "查找配置文件"       maeiee-config-menu-find-file)
     ("D" "打开配置目录"       maeiee-open-configuration)

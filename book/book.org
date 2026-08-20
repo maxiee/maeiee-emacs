@@ -30,3 +30,4 @@
 #+INCLUDE: "../modules/70-eglot.org" :minlevel 2
 #+INCLUDE: "../modules/80-org.org" :minlevel 2
 #+INCLUDE: "../modules/90-writing.org" :minlevel 2
+#+INCLUDE: "../modules/99-life-system.org" :minlevel 2

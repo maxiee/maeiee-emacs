@@ -1,0 +1,20 @@
+#+TITLE: 99 人生系统
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 目的
+
+本文件用于逐步记录人生系统的设计文档、设计决策及其演化过程，并在出现明确需求时承载通过 Org Babel 嵌入的 Emacs Lisp 实现。当前只建立长期承载位置，不实现任何功能。
+
+* 开发原则
+
+- 文档优先于代码。
+- 一次只解决一个明确问题。
+- 代码增长速度不能超过人的理解速度。
+- 先人工实践，再根据真实摩擦自动化。
+- 不为未来假想需求提前设计。
+- 每一步修改都应当足够小，使我可以完整理解和审查。
+
+#+begin_src emacs-lisp
+;; 暂无实现。
+#+end_src
