@@ -28,10 +28,19 @@
                     (fboundp 'org-set-emph-re))
            (maeiee-org--configure-cjk-emphasis-boundaries))))
 
+(defun maeiee-org--configure-imenu ()
+  "Use Org's complete headline tree as this buffer's Imenu index."
+  ;; Org 9.7 only installs this adapter after Imenu loads.  Since imenu-list is
+  ;; lazy-loaded, an Org buffer opened first can otherwise keep the generic
+  ;; Lisp indexer and expose source-block forms instead of document headings.
+  (setq-local imenu-create-index-function #'org-imenu-get-tree))
+
 (use-package org
   :ensure nil
   ;; 打开 .org 文件时自动启用 org-mode。
   :mode ("\\.org\\'" . org-mode)
+  ;; 不依赖 Org 与 Imenu 的加载先后顺序，始终安装标题索引器。
+  :hook (org-mode . maeiee-org--configure-imenu)
   ;; 设置 Org Mode 的默认行为。
   :custom
   ;; 启用标题和内容的缩进显示，让层级结构更清晰。
@@ -54,7 +63,12 @@
   (org-imenu-depth 8)
   :config
   ;; 重新生成强调正则，使中文标点也能包围 =...=、~...~ 等行内标记。
-  (maeiee-org--configure-cjk-emphasis-boundaries))
+  (maeiee-org--configure-cjk-emphasis-boundaries)
+  ;; 重载模块时也修正已经打开、尚未获得 Org 索引器的缓冲区。
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (when (derived-mode-p 'org-mode)
+        (maeiee-org--configure-imenu)))))
 ;; Org 文档的阅读与编辑体验:1 ends here
 
 ;; [[file:../modules/80-org.org::*Evil Org Mode：让 Org 使用 Evil 风格][Evil Org Mode：让 Org 使用 Evil 风格:1]]

@@ -179,6 +179,10 @@
            . ,(maeiee--generated-contains-p
                "52-outline.el"
                '(imenu-list-auto-update t)))
+          (stable-scroll-position
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(imenu-list-update-current-entry nil)))
           (source-aware-update
            . ,(maeiee--generated-contains-p
                "52-outline.el"
@@ -186,13 +190,27 @@
                  (quote imenu-list-update)
                  :around
                  (function maeiee-outline--update-from-source))))
+          (navigation-only-renderer
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(advice-add
+                 (quote imenu-list--insert-entry)
+                 :override
+                 (function maeiee-outline--insert-entry))))
+          (outline-folding-disabled
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(add-hook
+                 (quote imenu-list-major-mode-hook)
+                 (function maeiee-outline--keep-all-entries-visible)
+                 t)))
           (focus-independent-mouse-jump
            . ,(maeiee--generated-contains-p
                "52-outline.el"
                '(advice-add
-                 (car action)
+                 action
                  :override
-                 (cdr action))))
+                 (function maeiee-outline--action-goto-entry))))
           (leader-binding
            . ,(maeiee--generated-contains-sequence-p
                "52-outline.el"
@@ -237,8 +255,10 @@
     (kill-buffer source-buffer)
     (kill-buffer outline-buffer)))
 
-(dolist (function '(maeiee-outline--button-location
-                    maeiee-outline--run-button-action))
+(dolist (function '(maeiee-outline--keep-all-entries-visible
+                    maeiee-outline--button-location
+                    maeiee-outline--run-button-action
+                    maeiee-outline--entry-source-marker))
   (let ((definition
          (maeiee--generated-definition-form "52-outline.el" function)))
     (unless definition
@@ -264,12 +284,46 @@
                (= activated-position 1))
     (error "Outline mouse action must use its button marker, not window focus")))
 
+(require 'hideshow)
+(with-temp-buffer
+  (emacs-lisp-mode)
+  (insert "(progn\n  (message \"hidden\")\n  (message \"content\"))\n")
+  (goto-char (point-min))
+  (hs-minor-mode 1)
+  (hs-hide-block)
+  (unless (invisible-p 10)
+    (error "Outline folding test must begin with hidden content"))
+  (maeiee-outline--keep-all-entries-visible)
+  (when (or hs-minor-mode (invisible-p 10))
+    (error "Outline must disable Hideshow and reveal every entry")))
+
 (unless (maeiee--generated-contains-p
          "80-org.el"
          '(org-imenu-depth 8))
   (error "80-org.el must expose deep Org headings through Imenu"))
 
+(unless (and (maeiee--generated-defines-p
+              "80-org.el" 'maeiee-org--configure-imenu)
+             (maeiee--generated-contains-p
+              "80-org.el"
+              '(org-mode . maeiee-org--configure-imenu)))
+  (error "80-org.el must install its headline indexer independent of load order"))
+
+(let ((definition
+       (maeiee--generated-definition-form
+        "80-org.el" 'maeiee-org--configure-imenu)))
+  (eval definition))
+
 (require 'imenu)
+(with-temp-buffer
+  (org-mode)
+  ;; Reproduce an Org buffer created before Imenu's delayed adapter is ready.
+  (setq-local imenu-create-index-function
+              #'imenu-default-create-index-function)
+  (maeiee-org--configure-imenu)
+  (unless (eq imenu-create-index-function #'org-imenu-get-tree)
+    (error "Org Imenu adapter must repair an already-open buffer")))
+
 (with-temp-buffer
   (org-mode)
   (setq-local org-imenu-depth 8)
@@ -280,7 +334,32 @@
                  (maeiee--tree-contains-p index "L8")
                  (not (maeiee--tree-contains-p index "L9")))
       (error "Org Imenu depth adapter produced an unexpected index: %S"
-             index))))
+             index))
+    ;; Org folding only changes overlays.  The complete Imenu tree must remain
+    ;; identical when the source switches from expanded text to overview.
+    (org-overview)
+    (let ((folded-index (imenu--make-index-alist t)))
+      (unless (equal index folded-index)
+        (error "Org source folding must not change Outline entries: %S"
+               folded-index)))))
+
+(with-temp-buffer
+  (org-mode)
+  (setq-local org-imenu-depth 8)
+  (insert "* Parent\n** Child\n")
+  (let* ((index (imenu--make-index-alist t))
+         (parent
+          (cl-find-if
+           (lambda (entry)
+             (and (stringp (car-safe entry))
+                  (string= (substring-no-properties (car entry)) "Parent")))
+           index))
+         (marker (maeiee-outline--entry-source-marker parent)))
+    (unless (and (markerp marker)
+                 (eq (marker-buffer marker) (current-buffer))
+                 (= (marker-position marker) (point-min)))
+      (error "Org parent headings must remain navigable from Outline: %S"
+             parent))))
 
 (customize-set-variable 'word-wrap-by-category t)
 (unless (and (default-value 'word-wrap-by-category)

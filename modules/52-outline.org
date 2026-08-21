@@ -22,11 +22,15 @@
 对外只暴露 Maeiee 自己的 toggle 命令。这样即使未来替换侧边栏实现，Leader
 入口和其他模块也不必跟着改变。
 
-=imenu-list 20210420= 的鼠标回调还把参数当作完整鼠标事件，但 Emacs 的
-文本按钮实际传入指向按钮的 marker。当正文窗口仍被选中时，旧回调会把
-正文误当成点击来源并放弃动作；当 =*Ilist*= 恰好被选中时又会成功，
-因而表现为不稳定的单击。下面的兼容层直接从 marker 获取缓冲区和位置，
-不再依赖当前窗口焦点。
+=imenu-list 20210420= 默认把带子项的条目作为 Hideshow 开关。右侧因此还有一套
+独立折叠状态：点击父标题会隐藏一部分目录，看起来像是左侧 Org 的折叠改变了
+Outline；当前位置追踪还会主动滚动右侧窗口，进一步造成跳动。这里把 Outline
+明确约束为“始终完整的只读目录”：禁用自身折叠和自动追踪滚动，叶子标题与
+Org 父标题都只执行源码跳转。
+
+该版本的鼠标回调还有一处兼容问题：Emacs 文本按钮传入指向按钮的 marker，
+旧代码却把它当作完整鼠标事件。下面仍从 marker 取得点击位置，使跳转不依赖
+当前选中的窗口。
 
 #+begin_src emacs-lisp
 (defun maeiee-outline-toggle ()
@@ -45,6 +49,13 @@
     (when window
       ;; 普通的 delete-other-windows 不应顺带关闭结构导航。
       (set-window-parameter window 'no-delete-other-windows t))))
+
+(defun maeiee-outline--keep-all-entries-visible ()
+  "Disable Outline-local folding and reveal every index entry."
+  ;; imenu-list 默认在自己的缓冲区启用 Hideshow；关闭时 hs-minor-mode 会先
+  ;; 删除已有隐藏 overlay，因此重载本模块也能立刻恢复完整目录。
+  (when (bound-and-true-p hs-minor-mode)
+    (hs-minor-mode -1)))
 
 (defun maeiee-outline--update-from-source (update &rest arguments)
   "Run UPDATE in the displayed source when refresh starts in Outline."
@@ -101,21 +112,78 @@ click never depends on whichever window happens to be selected."
         (goto-char position)
         (funcall action)))))
 
+(defun maeiee-outline--entry-source-marker (entry)
+  "Return ENTRY's source marker when its title carries one.
+
+Org keeps the parent headline marker on the propertized Imenu title even
+after Imenu turns that headline into a sublist."
+  (let ((title (car-safe entry)))
+    (when (and (stringp title) (> (length title) 0))
+      (let ((marker (get-text-property 0 'org-imenu-marker title)))
+        (and (markerp marker) (marker-buffer marker) marker)))))
+
+(defun maeiee-outline--activate-entry (entry)
+  "Open source ENTRY without moving or folding the Outline window."
+  (cond
+   ;; Org sublists normally lose their selectable Imenu position, but retain
+   ;; it as a text property.  Use it so parent headlines navigate like leaves.
+   ((maeiee-outline--entry-source-marker entry)
+    (let ((marker (maeiee-outline--entry-source-marker entry)))
+      (pop-to-buffer (marker-buffer marker))
+      (goto-char marker)
+      ;; Match Imenu's normal post-jump behavior, including revealing the
+      ;; destination in Org, without asking imenu-list to scroll its sidebar.
+      (run-hooks 'imenu-after-jump-hook)
+      (run-hooks 'imenu-list-after-jump-hook)))
+   ;; A generic Imenu group has no source position.  Keep it visible and inert.
+   ((imenu--subalist-p entry) nil)
+   ;; Leaf entries retain the normal Imenu contract for markers, overlays,
+   ;; functions and Eglot positions.
+   (t
+    (pop-to-buffer imenu-list--displayed-buffer)
+    (imenu entry)
+    (run-hooks 'imenu-list-after-jump-hook))))
+
+(defun maeiee-outline-goto-entry ()
+  "Jump to the Outline entry at point without changing sidebar layout."
+  (interactive)
+  (when-let ((entry (imenu-list--find-entry)))
+    (maeiee-outline--activate-entry entry)))
+
+(defun maeiee-outline-display-entry ()
+  "Display the Outline entry at point while retaining sidebar focus."
+  (interactive)
+  (save-selected-window
+    (maeiee-outline-goto-entry)))
+
 (defun maeiee-outline--action-goto-entry (button-or-event)
   "Jump from the clicked Outline button to its source entry."
   (maeiee-outline--run-button-action
-   button-or-event #'imenu-list-goto-entry))
+   button-or-event #'maeiee-outline-goto-entry))
 
-(defun maeiee-outline--action-toggle-hs (button-or-event)
-  "Toggle the clicked Outline branch without relying on window focus."
-  (maeiee-outline--run-button-action button-or-event #'hs-toggle-hiding))
+(defun maeiee-outline--insert-entry (entry depth)
+  "Insert ENTRY at DEPTH as a navigation-only Outline button."
+  (let* ((sublist-p (imenu--subalist-p entry))
+         (title (format "%s" (car entry))))
+    (insert (imenu-list--depth-string depth))
+    ;; Do not prefix parent entries with `+' or attach a Hideshow action: the
+    ;; right sidebar is a complete document map, not a second folding surface.
+    (insert-button title
+                   'face (imenu-list--get-face depth sublist-p)
+                   'help-echo (if (or (not sublist-p)
+                                      (maeiee-outline--entry-source-marker entry))
+                                  (format "Go to: %s" title)
+                                (format "Group: %s" title))
+                   'follow-link t
+                   'action #'maeiee-outline--action-goto-entry)
+    (insert "\n")))
 #+end_src
 
 * 右侧窗口与自动刷新
 
 保持一个 =*Ilist*= 缓冲区作为通用 Outline。它会在空闲时重新读取当前缓冲区
-的 Imenu 索引，并同步高亮当前位置；不支持 Imenu 的缓冲区会清空列表，避免把
-上一份文件的大纲误认为当前内容。
+的 Imenu 索引，但不会跟随正文光标滚动或折叠目录；不支持 Imenu 的缓冲区会
+清空列表，避免把上一份文件的大纲误认为当前内容。
 
 =imenu-list= 的空闲定时器默认在当前获得焦点的缓冲区中执行。如果打开后焦点
 位于 =*Ilist*=，直接刷新会把侧边栏自身误当成源码，并用空索引清除刚生成的
@@ -140,8 +208,8 @@ click never depends on whichever window happens to be selected."
   (imenu-list-persist-when-imenu-index-unavailable nil)
   ;; 空闲时自动重建索引，让新增或移动的结构及时出现。
   (imenu-list-auto-update t)
-  ;; 在 Outline 中同步高亮正文光标所在的当前条目。
-  (imenu-list-update-current-entry t)
+  ;; 不跟随正文光标滚动右侧目录，避免折叠、点击或移动光标时视图跳动。
+  (imenu-list-update-current-entry nil)
   :config
   ;; 重载模块时不重复安装同一个 advice。
   (unless (advice-member-p #'maeiee-outline--update-from-source
@@ -149,26 +217,50 @@ click never depends on whichever window happens to be selected."
     ;; 保证自动刷新始终从真正的源码缓冲区读取 Imenu 索引。
     (advice-add 'imenu-list-update
                 :around #'maeiee-outline--update-from-source))
-  ;; imenu-list 20210420 把按钮回调参数当成鼠标事件，但 Emacs 实际传入
-  ;; marker。用稳定的按钮位置覆盖两个鼠标动作，避免跳转依赖窗口焦点。
-  (dolist (action '((imenu-list--action-goto-entry
-                     . maeiee-outline--action-goto-entry)
-                    (imenu-list--action-toggle-hs
-                     . maeiee-outline--action-toggle-hs)))
-    ;; 重载模块时不重复安装同一个 override advice。
-    (unless (advice-member-p (cdr action) (car action))
-      (advice-add (car action) :override (cdr action))))
+  ;; 重载旧配置时先移除曾用于折叠父条目的 advice。
+  (when (and (fboundp 'maeiee-outline--action-toggle-hs)
+             (advice-member-p #'maeiee-outline--action-toggle-hs
+                              'imenu-list--action-toggle-hs))
+    (advice-remove 'imenu-list--action-toggle-hs
+                   #'maeiee-outline--action-toggle-hs))
+  ;; 所有行都由同一个稳定按钮渲染，父标题不再变成折叠开关。
+  (unless (advice-member-p #'maeiee-outline--insert-entry
+                           'imenu-list--insert-entry)
+    (advice-add 'imenu-list--insert-entry
+                :override #'maeiee-outline--insert-entry))
+  ;; 兼容已存在的旧按钮；强制刷新后新按钮也统一执行源码跳转。
+  (dolist (action '(imenu-list--action-goto-entry
+                    imenu-list--action-toggle-hs))
+    (unless (advice-member-p #'maeiee-outline--action-goto-entry action)
+      (advice-add action :override #'maeiee-outline--action-goto-entry)))
+  ;; imenu-list 自带 hook 会启用 Hideshow；随后关闭它并清除所有隐藏 overlay。
+  (add-hook 'imenu-list-major-mode-hook
+            #'maeiee-outline--keep-all-entries-visible t)
   ;; 每次刷新后恢复 Maeiee 对侧边窗口生命周期的约定。
   (add-hook 'imenu-list-update-hook #'maeiee-outline--protect-window)
+  ;; 原生键位也只负责导航，不再暴露任何目录折叠入口。
+  (define-key imenu-list-major-mode-map (kbd "RET")
+              #'maeiee-outline-goto-entry)
+  (define-key imenu-list-major-mode-map (kbd "SPC")
+              #'maeiee-outline-display-entry)
+  (define-key imenu-list-major-mode-map (kbd "TAB") nil)
+  (define-key imenu-list-major-mode-map (kbd "f") nil)
   ;; 为 Evil normal/motion state 补充与其他列表一致的导航键。
   (evil-define-key '(normal motion) imenu-list-major-mode-map
     (kbd "j") #'next-line
     (kbd "k") #'previous-line
-    (kbd "RET") #'imenu-list-ret-dwim
-    (kbd "l") #'imenu-list-display-dwim
-    (kbd "TAB") #'hs-toggle-hiding
+    (kbd "RET") #'maeiee-outline-goto-entry
+    (kbd "l") #'maeiee-outline-display-entry
+    (kbd "TAB") nil
     (kbd "g") #'imenu-list-refresh
-    (kbd "q") #'imenu-list-quit-window))
+    (kbd "q") #'imenu-list-quit-window)
+  ;; 模块重载时，立即清除旧目录留下的折叠 overlay 并重画全部条目。
+  (when-let ((outline-buffer (get-buffer imenu-list-buffer-name)))
+    (with-current-buffer outline-buffer
+      (maeiee-outline--keep-all-entries-visible))
+    (when (buffer-live-p imenu-list--displayed-buffer)
+      (with-current-buffer imenu-list--displayed-buffer
+        (imenu-list-update t)))))
 #+end_src
 
 * Leader 菜单入口
@@ -186,16 +278,18 @@ Outline 是当前缓冲区的结构窗口，而不是 Org 专属动作，因此�
 * 动手验证
 
 1. 打开包含多级标题的 Org 文档，按 =SPC w o=，确认右侧按层级显示标题。
-2. 先点击正文，再连续单击 Outline 中的不同叶子标题，确认每次都跳转。
-3. 在 Outline 中用 =j/k= 移动，按 =RET= 跳到正文，按 =l= 预览但保留焦点。
-4. 在正文新增或移动一个标题，短暂停顿，确认右侧列表自动更新。
-5. 保持焦点位于 Outline 并等待一次自动刷新，确认目录不会一闪而过后清空。
-6. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
-7. 切到不提供 Imenu 索引的普通缓冲区，确认侧边栏不会保留上一文件的大纲。
+2. 在正文反复执行 =TAB=、=S-TAB= 或点击标题折叠，确认右侧条目数量与位置不变。
+3. 连续单击 Outline 的父标题和叶子标题，确认都只跳到正文，不隐藏任何条目。
+4. 在 Outline 中用 =j/k= 移动，按 =RET= 跳到正文，按 =l= 预览但保留焦点。
+5. 在正文新增或移动一个标题，短暂停顿，确认右侧列表自动更新。
+6. 保持焦点位于 Outline 并等待一次自动刷新，确认目录不会一闪而过后清空。
+7. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
+8. 切到不提供 Imenu 索引的普通缓冲区，确认侧边栏不会保留上一文件的大纲。
 
 * 维护笔记
 
 - 新语言的结构适配应落在该语言的 Imenu/Eglot 配置中，本模块只维护通用 UI。
+- Outline 固定展示完整索引；不要重新引入 Hideshow 或当前位置自动滚动。
 - 修改后保存，本仓库会自动 tangle 当前模块。
 - 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
 - 生成的 =52-outline.el= 位于 =generated/=，不要直接编辑。
