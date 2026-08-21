@@ -22,6 +22,12 @@
 对外只暴露 Maeiee 自己的 toggle 命令。这样即使未来替换侧边栏实现，Leader
 入口和其他模块也不必跟着改变。
 
+=imenu-list 20210420= 的鼠标回调还把参数当作完整鼠标事件，但 Emacs 的
+文本按钮实际传入指向按钮的 marker。当正文窗口仍被选中时，旧回调会把
+正文误当成点击来源并放弃动作；当 =*Ilist*= 恰好被选中时又会成功，
+因而表现为不稳定的单击。下面的兼容层直接从 marker 获取缓冲区和位置，
+不再依赖当前窗口焦点。
+
 #+begin_src emacs-lisp
 (defun maeiee-outline-toggle ()
   "Toggle the generic Outline sidebar for the current buffer."
@@ -53,6 +59,56 @@
         (imenu-list-clear))
     ;; 从普通源码缓冲区触发时保持 imenu-list 原来的更新行为。
     (apply update arguments)))
+
+(defun maeiee-outline--button-location (button-or-event)
+  "Return the buffer and position represented by BUTTON-OR-EVENT.
+
+Emacs text buttons pass a marker to their action, while older imenu-list
+releases treat that argument as a mouse event.  Accept both contracts so a
+click never depends on whichever window happens to be selected."
+  (cond
+   ;; `insert-button' creates a text button whose action receives a marker.
+   ((markerp button-or-event)
+    (when-let ((buffer (marker-buffer button-or-event)))
+      (cons buffer (marker-position button-or-event))))
+   ;; Keep compatibility with overlay buttons and direct position calls.
+   ((overlayp button-or-event)
+    (when-let ((buffer (overlay-buffer button-or-event)))
+      (cons buffer (overlay-start button-or-event))))
+   ((integerp button-or-event)
+    (cons (current-buffer) button-or-event))
+   ;; Also accept a real mouse event if a future imenu-list passes one.
+   ((eventp button-or-event)
+    (let* ((position-data (event-end button-or-event))
+           (window (posn-window position-data))
+           (position (posn-point position-data)))
+      (when (and (windowp window)
+                 (integer-or-marker-p position))
+        (cons (window-buffer window)
+              (if (markerp position)
+                  (marker-position position)
+                position)))))))
+
+(defun maeiee-outline--run-button-action (button-or-event action)
+  "Run ACTION at the Outline entry represented by BUTTON-OR-EVENT."
+  (when-let* ((location
+               (maeiee-outline--button-location button-or-event))
+              (buffer (car location))
+              (position (cdr location)))
+    ;; Ignore stale buttons from a replaced or already closed Outline buffer.
+    (when (eq buffer (get-buffer imenu-list-buffer-name))
+      (with-current-buffer buffer
+        (goto-char position)
+        (funcall action)))))
+
+(defun maeiee-outline--action-goto-entry (button-or-event)
+  "Jump from the clicked Outline button to its source entry."
+  (maeiee-outline--run-button-action
+   button-or-event #'imenu-list-goto-entry))
+
+(defun maeiee-outline--action-toggle-hs (button-or-event)
+  "Toggle the clicked Outline branch without relying on window focus."
+  (maeiee-outline--run-button-action button-or-event #'hs-toggle-hiding))
 #+end_src
 
 * 右侧窗口与自动刷新
@@ -93,6 +149,15 @@
     ;; 保证自动刷新始终从真正的源码缓冲区读取 Imenu 索引。
     (advice-add 'imenu-list-update
                 :around #'maeiee-outline--update-from-source))
+  ;; imenu-list 20210420 把按钮回调参数当成鼠标事件，但 Emacs 实际传入
+  ;; marker。用稳定的按钮位置覆盖两个鼠标动作，避免跳转依赖窗口焦点。
+  (dolist (action '((imenu-list--action-goto-entry
+                     . maeiee-outline--action-goto-entry)
+                    (imenu-list--action-toggle-hs
+                     . maeiee-outline--action-toggle-hs)))
+    ;; 重载模块时不重复安装同一个 override advice。
+    (unless (advice-member-p (cdr action) (car action))
+      (advice-add (car action) :override (cdr action))))
   ;; 每次刷新后恢复 Maeiee 对侧边窗口生命周期的约定。
   (add-hook 'imenu-list-update-hook #'maeiee-outline--protect-window)
   ;; 为 Evil normal/motion state 补充与其他列表一致的导航键。
@@ -121,11 +186,12 @@ Outline 是当前缓冲区的结构窗口，而不是 Org 专属动作，因此�
 * 动手验证
 
 1. 打开包含多级标题的 Org 文档，按 =SPC w o=，确认右侧按层级显示标题。
-2. 在 Outline 中用 =j/k= 移动，按 =RET= 跳到正文，按 =l= 预览但保留焦点。
-3. 在正文新增或移动一个标题，短暂停顿，确认右侧列表自动更新。
-4. 保持焦点位于 Outline 并等待一次自动刷新，确认目录不会一闪而过后清空。
-5. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
-6. 切到不提供 Imenu 索引的普通缓冲区，确认侧边栏不会保留上一文件的大纲。
+2. 先点击正文，再连续单击 Outline 中的不同叶子标题，确认每次都跳转。
+3. 在 Outline 中用 =j/k= 移动，按 =RET= 跳到正文，按 =l= 预览但保留焦点。
+4. 在正文新增或移动一个标题，短暂停顿，确认右侧列表自动更新。
+5. 保持焦点位于 Outline 并等待一次自动刷新，确认目录不会一闪而过后清空。
+6. 按 =q= 或再次按 =SPC w o=，确认 Outline 关闭。
+7. 切到不提供 Imenu 索引的普通缓冲区，确认侧边栏不会保留上一文件的大纲。
 
 * 维护笔记
 

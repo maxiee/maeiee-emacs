@@ -186,6 +186,13 @@
                  (quote imenu-list-update)
                  :around
                  (function maeiee-outline--update-from-source))))
+          (focus-independent-mouse-jump
+           . ,(maeiee--generated-contains-p
+               "52-outline.el"
+               '(advice-add
+                 (car action)
+                 :override
+                 (cdr action))))
           (leader-binding
            . ,(maeiee--generated-contains-sequence-p
                "52-outline.el"
@@ -229,6 +236,33 @@
           (error "Source-buffer refresh must preserve its current buffer")))
     (kill-buffer source-buffer)
     (kill-buffer outline-buffer)))
+
+(dolist (function '(maeiee-outline--button-location
+                    maeiee-outline--run-button-action))
+  (let ((definition
+         (maeiee--generated-definition-form "52-outline.el" function)))
+    (unless definition
+      (error "52-outline.el must define %S" function))
+    (eval definition)))
+
+(defvar imenu-list-buffer-name "*Ilist*")
+(let ((outline-buffer (generate-new-buffer imenu-list-buffer-name))
+      activated-buffer
+      activated-position)
+  (unwind-protect
+      (with-current-buffer outline-buffer
+        (insert "Entry")
+        ;; Text-button actions receive a marker, not the original mouse event.
+        ;; The selected window deliberately continues to show another buffer.
+        (maeiee-outline--run-button-action
+         (copy-marker (point-min))
+         (lambda ()
+           (setq activated-buffer (current-buffer)
+                 activated-position (point)))))
+    (kill-buffer outline-buffer))
+  (unless (and (eq activated-buffer outline-buffer)
+               (= activated-position 1))
+    (error "Outline mouse action must use its button marker, not window focus")))
 
 (unless (maeiee--generated-contains-p
          "80-org.el"

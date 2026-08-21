@@ -29,6 +29,56 @@
         (imenu-list-clear))
     ;; 从普通源码缓冲区触发时保持 imenu-list 原来的更新行为。
     (apply update arguments)))
+
+(defun maeiee-outline--button-location (button-or-event)
+  "Return the buffer and position represented by BUTTON-OR-EVENT.
+
+Emacs text buttons pass a marker to their action, while older imenu-list
+releases treat that argument as a mouse event.  Accept both contracts so a
+click never depends on whichever window happens to be selected."
+  (cond
+   ;; `insert-button' creates a text button whose action receives a marker.
+   ((markerp button-or-event)
+    (when-let ((buffer (marker-buffer button-or-event)))
+      (cons buffer (marker-position button-or-event))))
+   ;; Keep compatibility with overlay buttons and direct position calls.
+   ((overlayp button-or-event)
+    (when-let ((buffer (overlay-buffer button-or-event)))
+      (cons buffer (overlay-start button-or-event))))
+   ((integerp button-or-event)
+    (cons (current-buffer) button-or-event))
+   ;; Also accept a real mouse event if a future imenu-list passes one.
+   ((eventp button-or-event)
+    (let* ((position-data (event-end button-or-event))
+           (window (posn-window position-data))
+           (position (posn-point position-data)))
+      (when (and (windowp window)
+                 (integer-or-marker-p position))
+        (cons (window-buffer window)
+              (if (markerp position)
+                  (marker-position position)
+                position)))))))
+
+(defun maeiee-outline--run-button-action (button-or-event action)
+  "Run ACTION at the Outline entry represented by BUTTON-OR-EVENT."
+  (when-let* ((location
+               (maeiee-outline--button-location button-or-event))
+              (buffer (car location))
+              (position (cdr location)))
+    ;; Ignore stale buttons from a replaced or already closed Outline buffer.
+    (when (eq buffer (get-buffer imenu-list-buffer-name))
+      (with-current-buffer buffer
+        (goto-char position)
+        (funcall action)))))
+
+(defun maeiee-outline--action-goto-entry (button-or-event)
+  "Jump from the clicked Outline button to its source entry."
+  (maeiee-outline--run-button-action
+   button-or-event #'imenu-list-goto-entry))
+
+(defun maeiee-outline--action-toggle-hs (button-or-event)
+  "Toggle the clicked Outline branch without relying on window focus."
+  (maeiee-outline--run-button-action button-or-event #'hs-toggle-hiding))
 ;; 通用 Outline 命令:1 ends here
 
 ;; [[file:../modules/52-outline.org::*右侧窗口与自动刷新][右侧窗口与自动刷新:1]]
@@ -58,6 +108,15 @@
     ;; 保证自动刷新始终从真正的源码缓冲区读取 Imenu 索引。
     (advice-add 'imenu-list-update
                 :around #'maeiee-outline--update-from-source))
+  ;; imenu-list 20210420 把按钮回调参数当成鼠标事件，但 Emacs 实际传入
+  ;; marker。用稳定的按钮位置覆盖两个鼠标动作，避免跳转依赖窗口焦点。
+  (dolist (action '((imenu-list--action-goto-entry
+                     . maeiee-outline--action-goto-entry)
+                    (imenu-list--action-toggle-hs
+                     . maeiee-outline--action-toggle-hs)))
+    ;; 重载模块时不重复安装同一个 override advice。
+    (unless (advice-member-p (cdr action) (car action))
+      (advice-add (car action) :override (cdr action))))
   ;; 每次刷新后恢复 Maeiee 对侧边窗口生命周期的约定。
   (add-hook 'imenu-list-update-hook #'maeiee-outline--protect-window)
   ;; 为 Evil normal/motion state 补充与其他列表一致的导航键。
