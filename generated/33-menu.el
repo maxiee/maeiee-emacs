@@ -21,8 +21,6 @@
   "bootstrap.org")
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-roadmap
   "docs/ROADMAP.org")
-(maeiee-config-menu-define-file-opener maeiee-config-menu-open-book
-  "book/book.org")
 
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-00-package
   "modules/00-package.org")
@@ -70,8 +68,7 @@
   (interactive)
   (let* ((fixed-files '("README.org"
                         "bootstrap.org"
-                        "docs/ROADMAP.org"
-                        "book/book.org"))
+                        "docs/ROADMAP.org"))
          (module-files
           (mapcar (lambda (file)
                     (file-relative-name file maeiee-emacs-root))
@@ -108,8 +105,7 @@
   [["开始"
     ("r"  "README 总览"       maeiee-config-menu-open-readme)
     ("b"  "bootstrap 自举"    maeiee-config-menu-open-bootstrap)
-    ("d"  "ROADMAP 路线图"    maeiee-config-menu-open-roadmap)
-    ("k"  "book 电子书"       maeiee-config-menu-open-book)]
+    ("d"  "ROADMAP 路线图"    maeiee-config-menu-open-roadmap)]
    ["基础"
     ("00" "00 包管理"         maeiee-config-menu-open-00-package)
     ("01" "01 核心"           maeiee-config-menu-open-01-core)

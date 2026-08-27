@@ -10,8 +10,7 @@
 2. 每个 Org 文件只讲一个主题或一个插件；
 3. 保存模块时自动 tangle，启动时只加载生成的 Elisp；
 4. 一个极小的 =init.el= 负责找到 Git 仓库；
-5. =bootstrap.sh= 把任意新安装的 Emacs 接到仓库；
-6. 同一批 Org 文件未来可经 =book/book.org= 组织并导出 PDF。
+5. =bootstrap.sh= 把任意新安装的 Emacs 接到仓库。
 
 核心原则：*先理解，再加入；能用内置，就暂缓插件；每次只改变一件事。*
 
@@ -37,8 +36,6 @@ maeiee-emacs/
 │   ├── tangle-all.el
 │   ├── check.el
 │   └── doctor.sh
-└── book/
-    └── book.org           # 汇编为电子书
 #+end_example
 
 文件名前的两位数字就是加载顺序。不要依赖偶然的目录顺序。
@@ -266,7 +263,6 @@ modules/71-dart-mode.org
 modules/72-flutter.org
 modules/81-org-capture.org
 modules/82-org-agenda.org
-modules/83-org-export.org
 #+end_example
 
 判断是否该新建文件：
@@ -277,18 +273,6 @@ modules/83-org-export.org
 - 是否需要独立回滚？
 
 如果答案大多为“是”，就适合独立成章。
-
-* 未来 PDF 电子书
-
-=book/book.org= 通过 =#+INCLUDE= 引用各模块，因此书稿与配置不会复制两份。
-
-安装较完整的 TeX 环境后，可尝试：
-
-#+begin_src shell :tangle no
-make book
-#+end_src
-
-中文 PDF 建议后续单独建立 =modules/83-org-export.org=，配置 XeLaTeX、中文字体、代码高亮和书籍 class。不要在刚开始时让 TeX 环境阻塞 Emacs 学习；先保证 Org 能稳定导出 HTML，再进入 PDF 排版。
 
 * 发生故障时的最短路径
 
@@ -313,7 +297,6 @@ make book
 - Tree-sitter major mode；
 - Flutter/Dart + Eglot；
 - TRAMP：远程编辑；
-- PDF 导出与出版流水线；
 - ERT：为自定义 Elisp 写测试；
 - CI：在 GitHub Actions 中 batch tangle 与 syntax check。
 

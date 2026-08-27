@@ -19,7 +19,7 @@
 ** TODO Refile 与 Archive
 ** TODO Clock 与习惯追踪
 ** TODO 引用、脚注与文献管理
-** TODO HTML/PDF 发布
+** TODO HTML 发布
 
 * 第四卷：程序开发
 

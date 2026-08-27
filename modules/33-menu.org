@@ -39,8 +39,6 @@
   "bootstrap.org")
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-roadmap
   "docs/ROADMAP.org")
-(maeiee-config-menu-define-file-opener maeiee-config-menu-open-book
-  "book/book.org")
 
 (maeiee-config-menu-define-file-opener maeiee-config-menu-open-00-package
   "modules/00-package.org")
@@ -88,8 +86,7 @@
   (interactive)
   (let* ((fixed-files '("README.org"
                         "bootstrap.org"
-                        "docs/ROADMAP.org"
-                        "book/book.org"))
+                        "docs/ROADMAP.org"))
          (module-files
           (mapcar (lambda (file)
                     (file-relative-name file maeiee-emacs-root))
@@ -126,8 +123,7 @@
   [["开始"
     ("r"  "README 总览"       maeiee-config-menu-open-readme)
     ("b"  "bootstrap 自举"    maeiee-config-menu-open-bootstrap)
-    ("d"  "ROADMAP 路线图"    maeiee-config-menu-open-roadmap)
-    ("k"  "book 电子书"       maeiee-config-menu-open-book)]
+    ("d"  "ROADMAP 路线图"    maeiee-config-menu-open-roadmap)]
    ["基础"
     ("00" "00 包管理"         maeiee-config-menu-open-00-package)
     ("01" "01 核心"           maeiee-config-menu-open-01-core)
@@ -178,6 +174,5 @@
 * 维护笔记
 
 - Transient 原生支持鼠标单击，不需要另写 GUI 框架。
-- 新增模块后，要同时把它加入本菜单和 =book/book.org=。
 - 修改后保存，本仓库会自动 tangle 当前模块。
 - 生成的 =33-menu.el= 位于 =generated/=，不要直接编辑。

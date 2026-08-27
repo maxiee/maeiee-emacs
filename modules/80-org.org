@@ -1,4 +1,4 @@
-#+TITLE: 80 Org Mode：笔记、配置与未来电子书的共同底座
+#+TITLE: 80 Org Mode：笔记与文学配置的共同底座
 #+PROPERTY: header-args:emacs-lisp :results silent :comments link
 #+STARTUP: overview
 

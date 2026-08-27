@@ -1,6 +1,6 @@
 EMACS ?= emacs
 
-.PHONY: tangle check bootstrap doctor clean book
+.PHONY: tangle check bootstrap doctor clean
 
 tangle:
 	$(EMACS) --batch -Q --load scripts/tangle-all.el
@@ -17,9 +17,3 @@ doctor:
 
 clean:
 	rm -f generated/*.el
-	rm -f book/*.aux book/*.bbl book/*.bcf book/*.blg book/*.fdb_latexmk
-	rm -f book/*.fls book/*.log book/*.out book/*.run.xml book/*.tex book/*.toc
-
-book:
-	$(EMACS) --batch -Q \
-	  --eval "(progn (require 'org) (require 'ox-latex) (find-file \"book/book.org\") (org-latex-export-to-pdf))"
