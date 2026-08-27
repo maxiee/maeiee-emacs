@@ -11,8 +11,10 @@
 - Emacs 支持 Control、Meta、Super、Hyper、Alt 多种修饰键。
 - 在配置中，Super 写作 =s-=；因此 =s-s= 就是 Command-S。
 - 现代键位是一层兼容层，不应删掉原生键位，因为教程、帮助与第三方包都默认使用它们。
+- 本章只负责平台映射；新建缓冲区、打开配置和项目查找等通用动作定义在
+  =01-core.org=，这里仅为它们绑定 Command 键入口。
 
-* 配置
+* 修饰键与系统剪贴板
 
 #+begin_src emacs-lisp
 (when (eq system-type 'darwin)
@@ -34,25 +36,14 @@
 
   (setq select-enable-clipboard t
         select-enable-primary nil))
+#+end_src
 
-(defun maeiee-new-empty-buffer ()
-  "Create and switch to a new untitled buffer."
-  (interactive)
-  (switch-to-buffer (generate-new-buffer "untitled"))
-  (funcall initial-major-mode))
+* Command 键兼容层
 
-(defun maeiee-open-configuration ()
-  "Open this configuration repository."
-  (interactive)
-  (dired maeiee-emacs-root))
+这些绑定只增加 macOS 用户熟悉的入口，不替换 Emacs 原生键位。绑定目标尽量使用
+内置命令或 =01-core.org= 中的通用 Maeiee 命令，使平台层不承载业务逻辑。
 
-(defun maeiee-quick-open ()
-  "Find a file in the current project, or fall back to `find-file'."
-  (interactive)
-  (require 'project)
-  (if (project-current)
-      (call-interactively #'project-find-file)
-    (call-interactively #'find-file)))
+#+begin_src emacs-lisp
 
 (keymap-global-set "s-a" #'mark-whole-buffer)
 (keymap-global-set "s-c" #'kill-ring-save)
@@ -87,7 +78,8 @@
 
 1. 依次验证 ⌘O、⌘S、⌘F、⌘W。
 2. 用 =M-x describe-key= 后按 ⌘S，观察 Emacs 如何把它显示为 =s-s=。
-3. 保留 =C-x C-s=；它不是“旧键位垃圾”，而是 Emacs 生态的共同语言。
+3. 用 ⌘N、⌘P 和 ⌘, 调用核心层命令，再用对应的 =M-x= 命令验证结果一致。
+4. 保留 =C-x C-s=；它不是“旧键位垃圾”，而是 Emacs 生态的共同语言。
 
 * 维护笔记
 

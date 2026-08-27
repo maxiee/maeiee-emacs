@@ -1,30 +1,18 @@
-#+TITLE: 32 General：建立可扩展的 Leader 键命名空间
-#+PROPERTY: header-args:emacs-lisp :results silent :comments link
-#+STARTUP: overview
-
-* 本章目标
-
-以 Space 作为 normal/visual/motion state 的 leader，按“对象—动作”组织个人快捷键；同时保留 =C-c SPC= 作为非 Evil 状态入口。
-
-* 需要理解的概念
-
-- leader key 的价值不是少按一两个键，而是建立可记忆的命名空间。
-- =SPC f= 表示 file，=SPC b= 表示 buffer，=SPC p= 表示 project。
-- 不要一次设计几十个绑定；从每天使用的动作开始。
-
-* 配置
-
-#+begin_src emacs-lisp
+;; [[file:../modules/32-command-interface.org::*让前缀键成为可发现的界面][让前缀键成为可发现的界面:1]]
 (use-package which-key
   :demand t
   :config
+  ;; 全局显示前缀键提示，并保留足够短但不过度打扰的等待时间。
   (which-key-mode 1)
   (setq which-key-idle-delay 0.45))
+;; 让前缀键成为可发现的界面:1 ends here
 
+;; [[file:../modules/32-command-interface.org::*建立稳定的 Leader 命名空间][建立稳定的 Leader 命名空间:1]]
 (use-package general
   :after evil
   :demand t
   :config
+  ;; 创建后续领域模块共同扩展的 Maeiee Leader 定义器。
   (general-create-definer maeiee-leader
     :states '(normal visual motion)
     :keymaps 'override
@@ -32,41 +20,34 @@
     :global-prefix "C-c SPC")
 
   (maeiee-leader
+    ;; Leader 后再次按 Space，进入 Emacs 的命令执行入口。
     "SPC" '(execute-extended-command :which-key "M-x")
 
+    ;; 文件命名空间处理打开、保存、历史与配置仓库。
     "f" '(:ignore t :which-key "file")
     "f f" '(find-file :which-key "find file")
     "f s" '(save-buffer :which-key "save")
     "f r" '(recentf-open-files :which-key "recent")
     "f c" '(maeiee-open-configuration :which-key "config")
 
+    ;; 缓冲区命名空间只放与当前 Emacs 会话对象有关的动作。
     "b" '(:ignore t :which-key "buffer")
     "b b" '(switch-to-buffer :which-key "switch")
     "b k" '(kill-current-buffer :which-key "kill")
     "b n" '(next-buffer :which-key "next")
     "b p" '(previous-buffer :which-key "previous")
 
+    ;; 窗口命名空间调整布局，不负责项目文件树或 Outline 侧边栏。
     "w" '(:ignore t :which-key "window")
     "w d" '(delete-window :which-key "delete")
     "w o" '(delete-other-windows :which-key "only")
     "w s" '(split-window-below :which-key "split below")
     "w v" '(split-window-right :which-key "split right")
 
+    ;; 帮助命名空间保留 Emacs 自解释系统的常用入口。
     "h" '(:ignore t :which-key "help")
     "h f" '(describe-function :which-key "function")
     "h v" '(describe-variable :which-key "variable")
     "h k" '(describe-key :which-key "key")
     "h m" '(describe-mode :which-key "mode")))
-#+end_src
-
-* 动手验证
-
-1. 按 =SPC= 停顿，观察 which-key。
-2. 每当你一周内重复执行某个 =M-x= 命令三次，再考虑给它分配 leader key。
-3. 避免把快捷键当收藏品；不用的绑定会形成认知债务。
-
-* 维护笔记
-
-- 修改后保存，本仓库会自动 tangle 当前模块。
-- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
-- 生成的 =32-general.el= 位于 =generated/=，不要直接编辑。
+;; 建立稳定的 Leader 命名空间:1 ends here

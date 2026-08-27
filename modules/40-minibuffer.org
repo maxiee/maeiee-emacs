@@ -1,0 +1,112 @@
+#+TITLE: 40 Minibuffer：从候选生成到搜索跳转的统一入口
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+把 Emacs 原生 completion API 组织成一条可理解的交互链：命令先提供候选，
+Orderless 决定怎样匹配，Vertico 负责怎样展示，Marginalia 补充判断所需的上下文，
+Consult 则提供带预览的搜索、缓冲区切换和结构跳转命令。
+
+* 需要理解的概念
+
+- Minibuffer 是 Emacs 各类命令共享的输入界面，不只是 =M-x= 的命令行。
+- 候选来源、匹配策略、展示方式、候选注释和最终动作是不同职责，但它们共同
+  决定一次完整的查找体验。
+- 这些组件继续使用 Emacs completion API，因此 =M-x=、文件、缓冲区和第三方
+  命令可以共享同一条交互链。
+- Consult 是一组高质量命令，不是另一套封闭补全框架；预览和 narrowing 都建立
+  在当前候选集合之上。
+
+* 垂直展示候选：Vertico
+
+Vertico 只负责 Minibuffer 候选的排列和选择，不改变候选从哪里来、怎样匹配。
+
+#+begin_src emacs-lisp
+(use-package vertico
+  :demand t
+  :init
+  ;; 全局启用垂直候选列表。
+  (vertico-mode 1)
+  :custom
+  ;; 同时显示足够多的候选，并允许从首尾循环移动。
+  (vertico-count 15)
+  (vertico-cycle t))
+#+end_src
+
+* 用多个片段描述目标：Orderless
+
+Orderless 让空格分隔的片段共同约束候选，而不要求它们连续出现。文件路径继续
+保留 =partial-completion=，从而支持逐层缩写目录。
+
+#+begin_src emacs-lisp
+(use-package orderless
+  :demand t
+  :custom
+  ;; 一般候选优先使用无序片段匹配，并保留 basic 作为兼容后备。
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  ;; 文件名有路径层级，单独采用适合路径的 partial-completion。
+  (completion-category-overrides
+   '((file (styles partial-completion)))))
+#+end_src
+
+* 给候选补充判断上下文：Marginalia
+
+候选的名字并不总够用。Marginalia 在名称旁展示命令说明、文件权限、缓冲区
+major mode 等元数据，但不会改变候选或执行动作。
+
+#+begin_src emacs-lisp
+(use-package marginalia
+  :demand t
+  :init
+  ;; 为支持的 completion category 全局启用候选注释。
+  (marginalia-mode 1))
+#+end_src
+
+* 把搜索、缓冲区和跳转接入同一体验：Consult
+
+Consult 替换几个高频入口，并把相同命令暴露到 Leader 菜单。大型项目中的
+=consult-ripgrep= 依赖外部 ripgrep，但其他命令仍可独立使用。
+
+#+begin_src emacs-lisp
+(use-package consult
+  :demand t
+  :bind
+  ;; 保留熟悉的原生和 macOS 入口，同时加入即时预览。
+  (("C-s" . consult-line)
+   ("C-x b" . consult-buffer)
+   ("M-y" . consult-yank-pop)
+   ("s-f" . consult-line))
+  :config
+  ;; 在候选会话中按 < 进入 Consult narrowing。
+  (setq consult-narrow-key "<"))
+
+(with-eval-after-load 'general
+  ;; General 就绪后，把搜索与缓冲区命令接入既有 Leader 命名空间。
+  (maeiee-leader
+    "s" '(:ignore t :which-key "search")
+    "s s" '(consult-line :which-key "line")
+    "s r" '(consult-ripgrep :which-key "ripgrep")
+    "s i" '(consult-imenu :which-key "imenu")
+
+    "b b" '(consult-buffer :which-key "switch")))
+#+end_src
+
+* 动手验证
+
+1. 分别执行 =M-x=、=C-x b=、=C-x C-f=，确认不同候选来源共享垂直界面。
+2. 在 =M-x= 输入 =buff kill=，确认多个片段可以匹配 =kill-current-buffer= 等命令，
+   并观察候选旁的说明。
+3. 在长文件中按 =C-s= 或 ⌘F，确认 =consult-line= 提供即时预览。
+4. 在 Git 项目中按 =SPC s r=，确认 ripgrep 已安装时可以跨文件搜索。
+5. 在 Consult 会话中输入 =<=，观察 narrowing 分类提示。
+
+* 维护笔记
+
+- 新增 Minibuffer 组件时先判断它位于候选、匹配、展示、注释还是动作层，再加入
+  对应主题，不为每个小包创建模块。
+- Corfu、Cape 等编辑缓冲区内补全不属于 Minibuffer，应该进入程序开发领域。
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =40-minibuffer.el= 位于 =generated/=，不要直接编辑。

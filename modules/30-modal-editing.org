@@ -1,0 +1,79 @@
+#+TITLE: 30 模态编辑：让文本与特殊界面共享 Evil 操作语言
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+把 Evil 建立为主要编辑语言，并让 Dired、Help、Magit、Agenda 等非文本界面也
+尽量沿用同一套移动与退出习惯。这里关注的是完整的模态交互，而不是分别介绍
+Evil 与 Evil Collection 两个软件包。
+
+* 需要理解的概念
+
+- Evil 的 normal、insert、visual、motion 等 state 各自拥有 keymap；它不是
+  一个简单的全局按键替换层。
+- 部分 =evil-want-*= 变量必须在 Evil 加载前设置，因而属于本模块的加载契约。
+- Evil 本体负责文本编辑状态机，Evil Collection 把同一操作语言延伸到大量
+  special mode；两者共同构成一个用户能力。
+- 本配置使用 Emacs 28 以后内置的 =undo-redo=，不再引入另一套撤销树。
+- macOS Command 快捷键使用 Super 修饰键，与 Evil 的普通字母操作可以并存。
+
+* 文本编辑状态机
+
+先在加载 Evil 之前确定集成、滚动和撤销策略，再启用全局 Evil mode。特殊缓冲区
+从 normal state 开始，但仍保留其 major mode 提供的原生命令。
+
+#+begin_src emacs-lisp
+(use-package evil
+  :demand t
+  :init
+  ;; 允许 Evil 使用 Emacs 的通用集成接口，但把具体 mode 键位交给下一节处理。
+  (setq evil-want-integration t
+        evil-want-keybinding nil
+        evil-want-C-u-scroll t
+        evil-respect-visual-line-mode t
+        evil-undo-system 'undo-redo)
+  :config
+  ;; 在基础选项就绪后启用 Evil 状态机。
+  (evil-mode 1)
+
+  ;; 这些非文本缓冲区适合直接使用 normal state 浏览和退出。
+  (evil-set-initial-state 'messages-buffer-mode 'normal)
+  (evil-set-initial-state 'help-mode 'normal)
+  (evil-set-initial-state 'special-mode 'normal)
+
+  ;; Escape 既离开 Evil insert state，也中止普通 Emacs 操作。
+  (keymap-global-set "<escape>" #'keyboard-escape-quit))
+#+end_src
+
+* 特殊界面的 Evil 适配
+
+Evil Collection 在 Evil 之后加载，并为 Dired、Help、Magit、Agenda 等界面安装
+经过社区协调的按键。它补充的是特殊界面适配，不改变上一节的核心状态机策略。
+
+#+begin_src emacs-lisp
+(use-package evil-collection
+  :after evil
+  :demand t
+  :config
+  ;; 一次性初始化已支持 major mode 的 Evil 键位集合。
+  (evil-collection-init))
+#+end_src
+
+* 动手验证
+
+1. 在普通文本缓冲区确认 normal、insert、visual state 可以切换，=u= 撤销、
+   =C-r= 重做。
+2. 执行 =C-h v evil-state=，观察不同缓冲区中的初始 state。
+3. 打开 Dired（=M-x dired=）和帮助缓冲区（=C-h f find-file=），确认 =j/k=、
+   =RET=、=q= 与模态编辑习惯一致。
+4. 在 insert state 按 Escape，确认回到 normal state；在普通 Emacs 提示中按
+   Escape，确认仍能中止操作。
+
+* 维护笔记
+
+- 必须在 =evil-mode= 启用前设置的选项留在 =:init=，不要移动到延迟执行位置。
+- 特殊 mode 的局部差异优先查阅 =C-h m=，不要为了统一而覆盖其关键能力。
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =30-modal-editing.el= 位于 =generated/=，不要直接编辑。

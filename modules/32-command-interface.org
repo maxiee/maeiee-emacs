@@ -1,0 +1,98 @@
+#+TITLE: 32 命令界面：用 Leader 与按键提示组织常用动作
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+建立一层稳定、可发现的个人命令界面：在 Evil normal、visual、motion state 中
+使用 Space 作为 Leader，按“对象—动作”组织快捷键；在其他状态和非 Evil
+环境中保留 =C-c SPC= 入口。
+
+* 需要理解的概念
+
+- leader key 的价值不是少按一两个键，而是建立可记忆的命名空间。
+- =SPC f= 表示 file，=SPC b= 表示 buffer，=SPC p= 表示 project。
+- which-key 负责展示当前前缀还能执行什么；General 负责声明键位。它们是命令
+  界面的实现组件，不是模块分类依据。
+- 本章只建立稳定的一级命名空间；项目、搜索、Git、Org 等领域模块在加载后把
+  自己的命令加入对应位置。
+- 不要一次设计几十个绑定；从每天使用的动作开始。
+
+* 让前缀键成为可发现的界面
+
+which-key 在用户停顿时显示可用后续键，让 Leader 菜单本身承担轻量文档职责。
+
+#+begin_src emacs-lisp
+(use-package which-key
+  :demand t
+  :config
+  ;; 全局显示前缀键提示，并保留足够短但不过度打扰的等待时间。
+  (which-key-mode 1)
+  (setq which-key-idle-delay 0.45))
+#+end_src
+
+* 建立稳定的 Leader 命名空间
+
+General 只负责声明接口。=SPC= 面向 Evil 的主要操作 state，=C-c SPC= 则让
+insert state、Emacs state 和未启用 Evil 的场景仍能访问同一套命令。
+
+#+begin_src emacs-lisp
+
+(use-package general
+  :after evil
+  :demand t
+  :config
+  ;; 创建后续领域模块共同扩展的 Maeiee Leader 定义器。
+  (general-create-definer maeiee-leader
+    :states '(normal visual motion)
+    :keymaps 'override
+    :prefix "SPC"
+    :global-prefix "C-c SPC")
+
+  (maeiee-leader
+    ;; Leader 后再次按 Space，进入 Emacs 的命令执行入口。
+    "SPC" '(execute-extended-command :which-key "M-x")
+
+    ;; 文件命名空间处理打开、保存、历史与配置仓库。
+    "f" '(:ignore t :which-key "file")
+    "f f" '(find-file :which-key "find file")
+    "f s" '(save-buffer :which-key "save")
+    "f r" '(recentf-open-files :which-key "recent")
+    "f c" '(maeiee-open-configuration :which-key "config")
+
+    ;; 缓冲区命名空间只放与当前 Emacs 会话对象有关的动作。
+    "b" '(:ignore t :which-key "buffer")
+    "b b" '(switch-to-buffer :which-key "switch")
+    "b k" '(kill-current-buffer :which-key "kill")
+    "b n" '(next-buffer :which-key "next")
+    "b p" '(previous-buffer :which-key "previous")
+
+    ;; 窗口命名空间调整布局，不负责项目文件树或 Outline 侧边栏。
+    "w" '(:ignore t :which-key "window")
+    "w d" '(delete-window :which-key "delete")
+    "w o" '(delete-other-windows :which-key "only")
+    "w s" '(split-window-below :which-key "split below")
+    "w v" '(split-window-right :which-key "split right")
+
+    ;; 帮助命名空间保留 Emacs 自解释系统的常用入口。
+    "h" '(:ignore t :which-key "help")
+    "h f" '(describe-function :which-key "function")
+    "h v" '(describe-variable :which-key "variable")
+    "h k" '(describe-key :which-key "key")
+    "h m" '(describe-mode :which-key "mode")))
+#+end_src
+
+* 动手验证
+
+1. 回到 Evil normal state，按 =SPC= 停顿，确认 which-key 显示文件、缓冲区、
+   窗口和帮助等一级入口。
+2. 在 insert state 或 Emacs state 按 =C-c SPC=，确认进入同一命名空间。
+3. 依次验证 =SPC f f=、=SPC b b=、=SPC w v= 与 =SPC h k=。
+4. 每当一周内重复执行某个 =M-x= 命令三次，再考虑把它加入所属领域模块；避免
+   把快捷键当收藏品形成认知债务。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =32-command-interface.el= 位于 =generated/=，不要直接编辑。

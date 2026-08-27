@@ -1,0 +1,70 @@
+#+TITLE: 70 程序开发：以语言协议建立代码理解能力
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+建立跨语言共享的代码导航、诊断、重命名和格式化入口。当前先使用 Emacs 内置
+Eglot 接入语言服务器；以后 Tree-sitter、Flymake、Corfu/Cape 和具体语言生态
+也应围绕程序开发流程加入本章，而不是按小插件继续拆文件。
+
+* 需要理解的概念
+
+- major mode 定义语言的基础编辑行为，Tree-sitter 可以提供语法结构，Eglot
+  通过 LSP 提供跨文件语义；它们层次不同但共同服务代码理解。
+- LSP 客户端与语言服务器是两个进程、两个职责。Eglot 不会替你安装 Dart、
+  Java、Python 等语言服务器。
+- Eglot 使用 Emacs 的 Xref、Flymake、Eldoc 等原生接口，因此定义跳转和引用
+  查找不应被理解为 Eglot 私有能力。
+- 初期先手动连接并确认服务器稳定，再决定在哪些具体语言 mode 中自动启动。
+
+* 用 Eglot 接入语言服务器
+
+这里只声明跨语言通用策略，不在尚未验证的 major mode 中全局自动启动。
+
+#+begin_src emacs-lisp
+(use-package eglot
+  :ensure nil
+  :commands (eglot eglot-ensure)
+  :custom
+  ;; 最后一个受管理缓冲区关闭时退出服务器，避免遗留后台进程。
+  (eglot-autoshutdown t)
+  ;; 服务器发起的工作区编辑直接应用，保持重命名等操作连续。
+  (eglot-confirm-server-initiated-edits nil))
+
+;; 初期不要全局自动启动。先在具体语言章节里逐一添加，例如：
+;; (add-hook 'python-ts-mode-hook #'eglot-ensure)
+#+end_src
+
+* 建立跨语言代码命名空间
+
+代码动作、重命名和格式化由 Eglot 提供；定义与引用查找使用 Emacs 原生 Xref
+接口，使 =SPC c= 在语言服务器实现变化后仍保持稳定语义。
+
+#+begin_src emacs-lisp
+
+(with-eval-after-load 'general
+  ;; General 就绪后再把跨语言动作接入 Leader。
+  (maeiee-leader
+    "c" '(:ignore t :which-key "code")
+    "c a" '(eglot-code-actions :which-key "actions")
+    "c r" '(eglot-rename :which-key "rename")
+    "c f" '(eglot-format-buffer :which-key "format")
+    "c d" '(xref-find-definitions :which-key "definition")
+    "c R" '(xref-find-references :which-key "references")))
+#+end_src
+
+* 动手验证
+
+1. 选一门你常用的语言，先从终端确认其 language server 能启动。
+2. 打开项目文件后手动执行 =M-x eglot=。
+3. 依次验证 =SPC c d=、=SPC c R=、=SPC c r= 和 =SPC c a=，区分 Xref
+   导航与服务器语义动作。
+4. 观察 Flymake 诊断和 Eldoc 信息是否正常；成功后才把 =eglot-ensure= 加入该
+   语言的 mode hook。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =70-programming.el= 位于 =generated/=，不要直接编辑。

@@ -17,6 +17,20 @@
 
 (maeiee-tangle-all)
 
+;; 每个文学配置源码都必须恰好拥有一个同名生成文件。这样模块重命名后遗留的
+;; 旧 Elisp、漏交的生成文件和孤立生成物都会在提交前被发现。
+(let ((module-basenames
+       (mapcar #'file-name-base (maeiee--module-files)))
+      (generated-basenames
+       (mapcar #'file-name-base
+               (sort
+                (directory-files maeiee-generated-directory t
+                                 "\\`[0-9][0-9].*\\.el\\'")
+                #'string<))))
+  (unless (equal module-basenames generated-basenames)
+    (error "Module/generated basenames differ: modules=%S generated=%S"
+           module-basenames generated-basenames)))
+
 (defun maeiee--tree-contains-p (tree target)
   "Return non-nil when TREE contains a subtree equal to TARGET."
   (or (equal tree target)
@@ -119,21 +133,104 @@
         (end-of-file nil)))
     found))
 
+(dolist (function '(maeiee-new-empty-buffer
+                    maeiee-open-configuration
+                    maeiee-quick-open))
+  (unless (maeiee--generated-defines-command-p "01-core.el" function)
+    (error "01-core.el must define reusable command %S" function)))
+
+(dolist (binding '((keymap-global-set "s-n" (function maeiee-new-empty-buffer))
+                   (keymap-global-set "s-p" (function maeiee-quick-open))
+                   (keymap-global-set "s-," (function maeiee-open-configuration))))
+  (unless (maeiee--generated-contains-p "20-macos.el" binding)
+    (error "20-macos.el must preserve macOS binding %S" binding)))
+
+(unless (and
+         (maeiee--generated-contains-p "30-modal-editing.el" '(evil-mode 1))
+         (maeiee--generated-contains-p
+          "30-modal-editing.el"
+          '(evil-collection-init)))
+  (error "30-modal-editing.el must configure Evil and special-mode adapters"))
+
+(unless (and
+         (maeiee--generated-contains-p "40-minibuffer.el" '(vertico-mode 1))
+         (maeiee--generated-contains-p
+          "40-minibuffer.el"
+          '(completion-styles (quote (orderless basic))))
+         (maeiee--generated-contains-p "40-minibuffer.el" '(marginalia-mode 1))
+         (maeiee--generated-contains-p
+          "40-minibuffer.el"
+          '("C-s" . consult-line)))
+  (error "40-minibuffer.el must preserve display, matching, annotation and search"))
+
+(let ((menu-binding
+       '("m"
+         (quote
+          (maeiee-config-menu :which-key "Maeiee 配置")))))
+  (unless (and
+           (maeiee--generated-defines-command-p
+            "33-config-management.el"
+            'maeiee-config-menu-find-file)
+           (maeiee--generated-contains-p
+            "33-config-management.el"
+            '(maeiee--module-files))
+           (maeiee--generated-contains-sequence-p
+            "33-config-management.el"
+            '(transient-define-prefix maeiee-config-menu))
+           (maeiee--generated-contains-sequence-p
+            "33-config-management.el"
+            menu-binding))
+    (error "33-config-management.el must discover modules dynamically at SPC m")))
+
+(dolist (function '(maeiee-config-menu-find-file
+                    maeiee-config-menu-magit-status
+                    maeiee-config-menu-check
+                    maeiee-config-menu-doctor))
+  (unless (maeiee--generated-defines-command-p
+           "33-config-management.el" function)
+    (error "33-config-management.el must define management command %S" function)))
+
+;; 直接执行动态选择器的函数定义，并替换 UI/打开文件副作用，以确认候选集合
+;; 始终等于三个固定文档加 loader 实际发现的全部模块。
+(eval (maeiee--generated-definition-form
+       "33-config-management.el"
+       'maeiee-config-menu-find-file))
+(let (actual-candidates opened-file)
+  (cl-letf (((symbol-function 'completing-read)
+             (lambda (_prompt collection &rest _arguments)
+               (setq actual-candidates collection)
+               "README.org"))
+            ((symbol-function 'maeiee-config-menu--open-file)
+             (lambda (relative-file)
+               (setq opened-file relative-file))))
+    (maeiee-config-menu-find-file))
+  (let ((expected-candidates
+         (append '("README.org"
+                   "bootstrap.org"
+                   "docs/ROADMAP.org")
+                 (mapcar (lambda (file)
+                           (file-relative-name file maeiee-emacs-root))
+                         (maeiee--module-files)))))
+    (unless (and (equal actual-candidates expected-candidates)
+                 (equal opened-file "README.org"))
+      (error "Config finder candidates differ: expected=%S actual=%S"
+             expected-candidates actual-candidates))))
+
 (let ((leader-binding
        '("p t"
          (quote
           (maeiee-treemacs-toggle :which-key "toggle file tree")))))
   (unless (and
            (maeiee--generated-contains-p
-            "51-treemacs.el"
+            "50-project-workspace.el"
             '(treemacs-position (quote left)))
            (maeiee--generated-defines-p
-            "51-treemacs.el"
+            "50-project-workspace.el"
             'maeiee-treemacs-toggle)
            (maeiee--generated-contains-p
-            "51-treemacs.el"
+            "50-project-workspace.el"
             leader-binding))
-    (error "51-treemacs.el must configure a left sidebar at SPC p t")))
+    (error "50-project-workspace.el must configure a left sidebar at SPC p t")))
 
 (let ((org-config
        (expand-file-name "80-org.el" maeiee-generated-directory))

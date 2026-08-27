@@ -1,0 +1,59 @@
+#+TITLE: 60 版本控制：在 Emacs 中理解并操作 Git 状态
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+把查看改动、暂存、提交、日志和 blame 组织成一条可以在 Emacs 内探索的 Git
+工作流。Magit 是当前交互实现，但本章的长期主题是版本控制而不是某一个包。
+
+* 需要理解的概念
+
+- working tree 保存尚未提交的文件状态，index 组织下一次提交，HEAD 指向当前
+  提交；Magit 的界面只是把这些 Git 概念可视化。
+- Magit 大量使用 Transient，按 =?= 看到的临时菜单既是操作入口，也是可发现的
+  文档。
+- 学会界面操作不等于忘记 Git；发生问题时仍应能用命令行核对仓库状态。
+- =SPC g= 是稳定的版本控制入口，即使未来补充内置 VC 或其他工具，也不需要
+  改变用户侧的一级命名空间。
+
+* 用 Magit 呈现 Git 工作流
+
+Magit 保持按需加载。状态页复用主窗口，而 diff 等需要并排比较的内容仍使用
+适合自身的显示策略。
+
+#+begin_src emacs-lisp
+(use-package magit
+  :commands (magit-status)
+  :custom
+  ;; 状态与操作界面复用当前窗口，diff 缓冲区保留专门布局。
+  (magit-display-buffer-function
+   #'magit-display-buffer-same-window-except-diff-v1))
+#+end_src
+
+* 接入版本控制命名空间
+
+#+begin_src emacs-lisp
+
+(with-eval-after-load 'general
+  ;; General 就绪后再声明入口，保持前面模块的加载边界。
+  (maeiee-leader
+    "g" '(:ignore t :which-key "git")
+    "g g" '(magit-status :which-key "status")
+    "g b" '(magit-blame-addition :which-key "blame")
+    "g l" '(magit-log-current :which-key "log")))
+#+end_src
+
+* 动手验证
+
+1. 在仓库中按 =SPC g g=。
+2. 在 status 中区分 unstaged、staged 与最近提交，再按 =?= 查看当前所有按键。
+3. 只用 Magit 完成一次“查看 diff → stage → commit”，然后用命令行
+   =git status= 与 =git log -1= 核对。
+4. 用 =SPC g l= 查看当前仓库日志，用 =SPC g b= 检查一行内容的来源。
+
+* 维护笔记
+
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 想立即应用本章，执行 =M-x maeiee-reload-current-module=。
+- 生成的 =60-version-control.el= 位于 =generated/=，不要直接编辑。

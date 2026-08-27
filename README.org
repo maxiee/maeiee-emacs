@@ -7,10 +7,11 @@
 这不是一份“复制完就结束”的豪华配置，而是一套会随着学习一起生长的系统：
 
 1. Org 文件是唯一的人类可维护配置源码；
-2. 每个 Org 文件只讲一个主题或一个插件；
-3. 保存模块时自动 tangle，启动时只加载生成的 Elisp；
-4. 一个极小的 =init.el= 负责找到 Git 仓库；
-5. =bootstrap.sh= 把任意新安装的 Emacs 接到仓库。
+2. 每个 Org 文件讲一种稳定能力或一条完整工作流，不按小插件机械拆分；
+3. Org 标题解释组成角色，源码块保留具体配置与加载时机；
+4. 保存模块时自动 tangle，启动时只加载生成的 Elisp；
+5. 一个极小的 =init.el= 负责找到 Git 仓库；
+6. =bootstrap.sh= 把任意新安装的 Emacs 接到仓库。
 
 核心原则：*先理解，再加入；能用内置，就暂缓插件；每次只改变一件事。*
 
@@ -19,7 +20,7 @@
 #+begin_example
 maeiee-emacs/
 ├── bootstrap.org          # 自举脚本的文学源码
-├── bootstrap.sh           # 空白机器可直接执行，唯一提交的生成文件
+├── bootstrap.sh           # 由 bootstrap.org 生成，空白机器可直接执行
 ├── bootstrap/
 │   ├── early-init.el      # 极早期、极少量配置
 │   ├── early-local.example.el # 机器本地的启动前配置示例
@@ -30,8 +31,19 @@ maeiee-emacs/
 │   ├── 00-package.org
 │   ├── 01-core.org
 │   ├── 10-ui.org
-│   └── ...
-├── generated/             # 自动生成，不进入 Git
+│   ├── 20-macos.org
+│   ├── 30-modal-editing.org
+│   ├── 32-command-interface.org
+│   ├── 33-config-management.org
+│   ├── 40-minibuffer.org
+│   ├── 50-project-workspace.org
+│   ├── 52-outline.org
+│   ├── 60-version-control.org
+│   ├── 70-programming.org
+│   ├── 80-org.org
+│   ├── 90-writing.org
+│   └── 99-life-system.org
+├── generated/             # 自动生成，与对应 Org 模块一同提交
 ├── scripts/
 │   ├── tangle-all.el
 │   ├── check.el
@@ -166,7 +178,8 @@ make EMACS=/Applications/Emacs.app/Contents/MacOS/Emacs check
 
 ** 修改
 
-不要编辑 =generated/*.el=。只改 =modules/*.org= 中的 Emacs Lisp 源码块。
+不要编辑 =generated/*.el=。只改 =modules/*.org= 中的 Emacs Lisp 源码块；保存
+或检查时重新生成对应 Elisp，并把源码与生成文件成对提交。
 
 ** 保存与应用
 
@@ -176,11 +189,15 @@ make EMACS=/Applications/Emacs.app/Contents/MacOS/Emacs check
 M-x maeiee-reload-current-module
 #+end_example
 
-也可进入新增的配置管理二级菜单，再点击“重载当前模块”：
+也可进入配置管理二级菜单，再点击“重载当前模块”：
 
 #+begin_example
 SPC m
 #+end_example
+
+要打开文学配置文件，在这个面板中点击“查找配置文件”，再从补全列表选择
+README、bootstrap、ROADMAP 或当前任一模块。模块列表来自实际的 =modules/=
+目录，因此文件增删或改名后不需要维护另一份菜单清单。
 
 注意：重载配置不总能撤销旧副作用。改 hook、keymap、mode 时，偶尔重启 Emacs 是最可靠的验证。
 
@@ -189,7 +206,7 @@ SPC m
 #+begin_src shell :tangle no
 git status
 git diff
-git add modules/XX-topic.org
+git add modules/XX-topic.org generated/XX-topic.el
 git commit -m "feat: explain and configure topic"
 git push
 #+end_src
@@ -244,35 +261,37 @@ git push
 
 ** 第 4 周：minibuffer 与项目
 
-- Vertico 是展示；
-- Orderless 是匹配；
-- Marginalia 是注释；
-- Consult 是一组命令；
-- project.el 是项目协议；
+- 把补全理解为一条协作链：Vertico 展示、Orderless 匹配、Marginalia 注释、
+  Consult 提供带预览的命令；
+- project.el 定义项目协议，Treemacs 把同一项目呈现为文件树；
 - Magit 是 Git porcelain。
 
-* 如何继续拆分模块
+* 如何规划和拆分模块
 
-一插件一文件，例如：
+模块采用三级口径：
 
 #+begin_example
-modules/44-embark.org
-modules/45-corfu.org
-modules/46-cape.org
-modules/71-dart-mode.org
-modules/72-flutter.org
-modules/81-org-capture.org
-modules/82-org-agenda.org
+Org 文件      = 稳定能力、完整工作流或确有独立生命周期的子系统
+二级标题      = 组成角色、工作阶段或具体插件
+Emacs Lisp 块 = 配置实现与加载时机
 #+end_example
 
-判断是否该新建文件：
+例如，Embark 是 Minibuffer 候选动作层，应成为 =40-minibuffer.org= 的一个主题；
+Corfu 与 Cape 服务编辑缓冲区内补全，应进入 =70-programming.org=；Dart 与 Flutter
+初期也先作为程序开发主题。Capture、Agenda、Refile、Archive 形成真实的收集到
+归档流程后，可以共同建立 =81-org-workflow.org=，而不是各占一个小文件。
 
-- 能否用一句话说清它的单一职责？
-- 删除这个文件，会不会只失去一种能力？
-- 是否能独立写出验证步骤？
-- 是否需要独立回滚？
+判断是否真的需要新建文件时，依次做四个测试：
 
-如果答案大多为“是”，就适合独立成章。
+- *替换测试*：更换实现插件后，文件名和本章目标是否依然成立？
+- *共同变化测试*：其中的组件是否通常一起启用、调整和验证？
+- *独立生命周期测试*：它是否确实需要独立加载、重载、禁用或回滚？
+- *完整章节测试*：能否围绕一个用户问题写出目标、概念、配置和端到端验证？
+
+满足独立生命周期并通过其他测试时，才适合建立新模块。单个 =use-package= 或几十
+行代码通常应先成为既有模块的标题；反过来，文件很长也不自动意味着需要拆分，
+只要它仍在解释一条连贯工作流。文件名前的两位数字继续承担真实加载顺序，不应
+只为了视觉分组随意调整。
 
 * 发生故障时的最短路径
 
@@ -286,16 +305,16 @@ modules/82-org-agenda.org
 
 不要在错误状态下连续安装十个包。先缩小问题边界。
 
-* 下一批推荐章节
+* 下一批推荐扩展
 
-- Embark：对当前候选执行动作；
-- Corfu + Cape：buffer 内补全；
+- 在 =40-minibuffer.org= 加入 Embark 候选动作层；
+- 在 =70-programming.org= 加入 Corfu + Cape 的 buffer 内补全；
 - Dired：文件管理；
 - Eshell/Vterm：终端策略；
-- Org Capture 与 Agenda；
+- 在工作流成熟后建立包含 Capture、Agenda、Refile 与 Archive 的 Org 工作流模块；
 - Org Roam（等普通 Org 工作流稳定后再引入）；
-- Tree-sitter major mode；
-- Flutter/Dart + Eglot；
+- 在 =70-programming.org= 加入 Tree-sitter major mode；
+- 在 =70-programming.org= 逐步验证 Flutter/Dart + Eglot，形成独立语言生态后再拆分；
 - TRAMP：远程编辑；
 - ERT：为自定义 Elisp 写测试；
 - CI：在 GitHub Actions 中 batch tangle 与 syntax check。

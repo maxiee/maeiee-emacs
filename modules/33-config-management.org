@@ -1,0 +1,147 @@
+#+TITLE: 33 配置管理：从一个可点击面板维护文学配置
+#+PROPERTY: header-args:emacs-lisp :results silent :comments link
+#+STARTUP: overview
+
+* 本章目标
+
+保持 =SPC= 原有一级 Leader 菜单不变，只增加 =m=（Maeiee 配置）入口。进入
+=SPC m= 后，可以打开说明文档、动态选择任一文学配置模块，并执行保存、重载、
+tangle、检查、诊断和版本控制等维护动作。面板既支持按键，也支持鼠标点击。
+
+* 需要理解的概念
+
+- Transient 是 Magit 同款的临时命令面板，适合呈现一组短暂、可发现的操作。
+- 模块文件列表以 =maeiee--module-files= 的实际结果为准，不在菜单中复制一份
+  容易过期的静态清单。
+- “打开配置”和“管理配置”是不同职责：前者只选择人类维护的 Org 源码，后者
+  执行 tangle、重载、检查等生命周期动作。
+- Insert state 中的空格仍然只是空格；非 Evil 状态可以用 =C-c SPC m= 进入同一
+  面板。
+
+* Transient 面板基础
+
+#+begin_src emacs-lisp
+(use-package transient
+  :demand t
+  :custom
+  ;; 显示完整的菜单导航提示，同时保留 Transient 原生鼠标按钮。
+  (transient-enable-menu-navigation 'verbose))
+#+end_src
+
+* 打开固定文档与动态模块
+
+README、bootstrap 和 ROADMAP 是稳定入口，因此保留直接按钮。配置模块则在调用
+时扫描 =modules/=，文件改名或增删后无需同步修改菜单源码。
+
+#+begin_src emacs-lisp
+(defun maeiee-config-menu--open-file (relative-file)
+  "Open RELATIVE-FILE inside the Maeiee Emacs repository."
+  ;; 所有路径都相对于仓库根目录解析，避免受当前缓冲区目录影响。
+  (find-file (expand-file-name relative-file maeiee-emacs-root)))
+
+(defmacro maeiee-config-menu-define-file-opener (name relative-file)
+  "Define NAME as an interactive command opening RELATIVE-FILE."
+  `(defun ,name ()
+     ,(format "Open %s in the Maeiee Emacs repository." relative-file)
+     (interactive)
+     (maeiee-config-menu--open-file ,relative-file)))
+
+;; 为三个稳定的起始文档定义可直接放入 Transient 的交互命令。
+(maeiee-config-menu-define-file-opener maeiee-config-menu-open-readme
+  "README.org")
+(maeiee-config-menu-define-file-opener maeiee-config-menu-open-bootstrap
+  "bootstrap.org")
+(maeiee-config-menu-define-file-opener maeiee-config-menu-open-roadmap
+  "docs/ROADMAP.org")
+
+(defun maeiee-config-menu-find-file ()
+  "Choose and open a human-maintained Org file from this repository."
+  (interactive)
+  ;; 起始文档固定存在；模块清单则始终从 loader 的实际发现结果生成。
+  (let* ((fixed-files '("README.org"
+                        "bootstrap.org"
+                        "docs/ROADMAP.org"))
+         (module-files
+          (mapcar (lambda (file)
+                    (file-relative-name file maeiee-emacs-root))
+                  (maeiee--module-files)))
+         (relative-file
+          (completing-read "配置文件: "
+                           (append fixed-files module-files)
+                           nil t)))
+    (maeiee-config-menu--open-file relative-file)))
+#+end_src
+
+* 配置生命周期操作
+
+这些命令统一把工作目录切回仓库根目录，确保从任意模块或普通文档中调用都得到
+相同结果。
+
+#+begin_src emacs-lisp
+(defun maeiee-config-menu-magit-status ()
+  "Open Magit status for the configuration repository."
+  (interactive)
+  (let ((default-directory maeiee-emacs-root))
+    (call-interactively #'magit-status)))
+
+(defun maeiee-config-menu--compile-target (target)
+  "Run make TARGET from the configuration repository."
+  (let ((default-directory maeiee-emacs-root))
+    (compile (format "make %s" target))))
+
+(defun maeiee-config-menu-check ()
+  "Tangle and syntax-check every configuration module."
+  (interactive)
+  (maeiee-config-menu--compile-target "check"))
+
+(defun maeiee-config-menu-doctor ()
+  "Run the repository environment diagnostics."
+  (interactive)
+  (maeiee-config-menu--compile-target "doctor"))
+#+end_src
+
+* 组织面板并接入 Leader
+
+模块不再逐项占用按钮；“查找配置文件”本身是可点击入口，随后由补全界面列出
+所有当前模块。这样配置管理面板的结构稳定，模块目录可以独立演化。
+
+#+begin_src emacs-lisp
+(transient-define-prefix maeiee-config-menu ()
+  "Open the Maeiee Emacs configuration control panel."
+  [["开始"
+    ("r" "README 总览"       maeiee-config-menu-open-readme)
+    ("b" "bootstrap 自举"    maeiee-config-menu-open-bootstrap)
+    ("d" "ROADMAP 路线图"    maeiee-config-menu-open-roadmap)]
+   ["配置"
+    ("f" "查找配置文件"       maeiee-config-menu-find-file)
+    ("D" "打开配置目录"       maeiee-open-configuration)]
+   ["管理"
+    ("s" "保存当前文件"       save-buffer)
+    ("e" "重载当前模块"       maeiee-reload-current-module)
+    ("a" "Tangle 全部模块"    maeiee-tangle-all)
+    ("c" "运行配置检查"       maeiee-config-menu-check)
+    ("x" "运行环境诊断"       maeiee-config-menu-doctor)
+    ("g" "打开 Magit"         maeiee-config-menu-magit-status)
+    ("q" "关闭菜单"           transient-quit-one)]])
+
+;; 保持原有 Leader 一级分类不变，只挂载一个 Maeiee 配置入口。
+(maeiee-leader
+  "m" '(maeiee-config-menu :which-key "Maeiee 配置"))
+#+end_src
+
+* 动手验证
+
+1. 回到 Evil normal state，按 =SPC=，确认原有一级分类仍在，并保留 =m= 入口。
+2. 按 =SPC m= 后点击“查找配置文件”，确认候选中包含 README、bootstrap、
+   ROADMAP 和当前全部模块。
+3. 新建一个符合两位数命名规则的临时 Org 模块，重新打开选择器，确认无需修改
+   菜单即可发现它；验证后删除临时文件。
+4. 分别通过按键和鼠标执行保存、重载当前模块、配置检查与环境诊断。
+5. 在非 Evil 状态用 =C-c SPC m= 打开同一面板；按 =q= 或 =C-g= 关闭。
+
+* 维护笔记
+
+- Transient 原生支持鼠标单击，不需要另写 GUI 框架。
+- 模块导航只依赖 loader 的动态清单，不再为单个模块定义 opener 命令。
+- 修改后保存，本仓库会自动 tangle 当前模块。
+- 生成的 =33-config-management.el= 位于 =generated/=，不要直接编辑。

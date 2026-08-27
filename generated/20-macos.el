@@ -1,4 +1,4 @@
-;; [[file:../modules/20-macos.org::*配置][配置:1]]
+;; [[file:../modules/20-macos.org::*修饰键与系统剪贴板][修饰键与系统剪贴板:1]]
 (when (eq system-type 'darwin)
   ;; GNU Emacs 的 NS 端口。
   (when (boundp 'ns-command-modifier)
@@ -18,26 +18,9 @@
 
   (setq select-enable-clipboard t
         select-enable-primary nil))
+;; 修饰键与系统剪贴板:1 ends here
 
-(defun maeiee-new-empty-buffer ()
-  "Create and switch to a new untitled buffer."
-  (interactive)
-  (switch-to-buffer (generate-new-buffer "untitled"))
-  (funcall initial-major-mode))
-
-(defun maeiee-open-configuration ()
-  "Open this configuration repository."
-  (interactive)
-  (dired maeiee-emacs-root))
-
-(defun maeiee-quick-open ()
-  "Find a file in the current project, or fall back to `find-file'."
-  (interactive)
-  (require 'project)
-  (if (project-current)
-      (call-interactively #'project-find-file)
-    (call-interactively #'find-file)))
-
+;; [[file:../modules/20-macos.org::*Command 键兼容层][Command 键兼容层:1]]
 (keymap-global-set "s-a" #'mark-whole-buffer)
 (keymap-global-set "s-c" #'kill-ring-save)
 (keymap-global-set "s-x" #'kill-region)
@@ -65,4 +48,4 @@
 (keymap-global-set "s-<right>" #'end-of-line)
 (keymap-global-set "s-<up>" #'beginning-of-buffer)
 (keymap-global-set "s-<down>" #'end-of-buffer)
-;; 配置:1 ends here
+;; Command 键兼容层:1 ends here

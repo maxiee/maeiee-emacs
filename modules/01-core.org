@@ -1,18 +1,23 @@
-#+TITLE: 01 核心行为：文件、安全网与历史记录
+#+TITLE: 01 核心行为：文件、安全网、历史记录与通用命令
 #+PROPERTY: header-args:emacs-lisp :results silent :comments link
 #+STARTUP: overview
 
 * 本章目标
 
-建立不依赖第三方插件的编辑器基础：UTF-8、备份、自动保存、历史记录、最近文件和更友好的交互。
+建立不依赖第三方插件、也不依赖具体操作系统的编辑器基础：统一文件编码，
+隔离备份与自动保存，保留历史记录，并提供其他交互层可以复用的日常命令。
 
 * 需要理解的概念
 
 - Emacs 的“备份文件”和“自动保存文件”不是一回事。
 - =custom-file= 把 Customize 产生的机器状态隔离出 Git 仓库。
 - minor mode 可以为所有缓冲区增加一种横切能力。
+- 通用命令描述“要完成什么”，平台快捷键和 Leader 菜单只负责提供入口。
 
-* 配置
+* 文件状态与编辑器默认行为
+
+这一层先建立所有后续模块都能依赖的目录、编码和全局 minor mode。它不绑定
+特定插件，也不假设当前运行在图形界面或 macOS。
 
 #+begin_src emacs-lisp
 (defconst maeiee-backup-directory
@@ -62,11 +67,43 @@
 (add-hook 'org-mode-hook #'maeiee-enable-module-auto-tangle)
 #+end_src
 
+* 可被不同交互层复用的命令
+
+下面三个命令不属于 macOS：Command 键、Leader 菜单或 =M-x= 都可以调用同一
+实现。把动作定义放在核心层，可以让后续模块只关心“怎样触发”，而不重复业务
+逻辑。
+
+#+begin_src emacs-lisp
+;; 新建一个没有关联文件的缓冲区，并让它采用用户设置的初始 major mode。
+(defun maeiee-new-empty-buffer ()
+  "Create and switch to a new untitled buffer."
+  (interactive)
+  (switch-to-buffer (generate-new-buffer "untitled"))
+  (funcall initial-major-mode))
+
+;; 用 Dired 打开当前配置仓库，作为所有配置管理入口的共同底座。
+(defun maeiee-open-configuration ()
+  "Open this configuration repository."
+  (interactive)
+  (dired maeiee-emacs-root))
+
+;; 优先在当前项目中查找文件；没有项目上下文时退回普通的 find-file。
+(defun maeiee-quick-open ()
+  "Find a file in the current project, or fall back to `find-file'."
+  (interactive)
+  (require 'project)
+  (if (project-current)
+      (call-interactively #'project-find-file)
+    (call-interactively #'find-file)))
+#+end_src
+
 * 动手验证
 
 1. 编辑任意文件但先不保存，观察自动保存文件是否进入 =~/.emacs.d/var/auto-save/=。
 2. 保存数次后，观察 =~/.emacs.d/var/backups/=。
 3. 关闭再打开 Emacs，执行 =M-x recentf-open-files=，确认历史仍在。
+4. 分别执行 =M-x maeiee-new-empty-buffer=、=M-x maeiee-open-configuration= 和
+   =M-x maeiee-quick-open=，确认这些动作不依赖 macOS 快捷键。
 
 * 维护笔记
 
